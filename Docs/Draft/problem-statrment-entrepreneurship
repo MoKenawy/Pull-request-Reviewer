@@ -1,0 +1,41 @@
+# Project Teams and Idea Generation — Agentic Code Review
+
+---
+
+## 1. User Insights
+
+**User:** the engineer who peer-reviews a colleague's AI-assisted TypeScript/JavaScript pull request inside a company.
+
+1. **Green no longer means right.** AI-assisted PRs arrive clean-looking and test-passing, yet some still break the repo's conventions, pick the wrong backend, or erode the architecture. Reviewers used to treat rough code and failing tests as cues for where to look. That cue is gone, and the mismatch is often found only after merge.
+2. **A second AI opinion may not be independent.** When the same kind of model writes and reviews the code, both tend to miss the same things. The reviewer cannot tell from the output whether the review shares the author's blind spots.
+3. **The fatigue is repetition, not difficulty.** With high PR volume, reviewers keep re-running the same mechanical checks (tests, type-checks, dependency audit) on every diff. A bot only helps if its noise costs less attention than it saves.
+
+*Evidence note: these insights come from a background study (secondary sources and a small first-hand anecdote, N=3), not from our own interviews. Insight 1 is the strongest in confidence but weak on frequency. Validating them with real reviewers is a next step.*
+
+---
+
+## 2. Problem Statement (POV)
+
+A peer reviewer of AI-assisted TS/JS pull requests **needs a way to know when code that passes its tests still doesn't fit the repo's established shape or convention**, because passing tests and clean-looking code no longer correlate with structural correctness, and existing AI reviewers judge from text alone without running the code or showing evidence for their findings.
+
+---
+
+## 3. HMW Question
+
+**How might we show a reviewer, backed by evidence from the repo itself and from running the code, that a test-passing change still diverges from the repo's established shape?**
+
+---
+
+## 4. Recommended Solution
+
+**Agentic Code Review** is an open-source GitHub Action that performs an autonomous first-pass review on every pull request (TS/JS, v1).
+
+- **Repo-aware context.** It analyzes the changed code and what imports or calls it, using the repo's existing patterns as the yardstick for "right shape."
+- **Execution evidence.** It runs tests, type-checks and `npm audit` in the CI runner and attaches the results to its findings, so a reviewer can see what ran instead of taking a claim on trust.
+- **Fresh-context review.** The review runs isolated from any code-writing agent, so it does not inherit the author's blind spots.
+- **Actionable output.** It posts one PR summary comment with a risk tier and findings by severity, plus suggested fixes as review comments and a JSON artifact. It never auto-applies changes.
+- **Measurable quality.** A versioned regression set of "test-passing but wrong-shape" defects lets the team measure the tool's catch rate and false-positive rate, and it is built first.
+
+**Why this approach:** it targets the specific signal AI-assisted development broke (green means right) instead of just making review faster, which existing tools already do.
+
+**Known limits:** it cannot fix the underlying rate mismatch between AI output speed and human comprehension, and deep security scanning is deferred to v2. Its value rests on the regression set showing a real catch rate at a tolerable false-positive rate.
