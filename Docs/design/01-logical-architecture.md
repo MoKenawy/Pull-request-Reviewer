@@ -79,13 +79,13 @@ flowchart LR
 
 | CF | Responsibility | Module(s) | 1:1? |
 |---|---|---|---|
-| — | **Order of operations** | `core/pipeline/` | ⚠️ No CF owns it — [DB-16](../../DESIGN_BLOCKERS.md#db-16), §6.1 |
+| — | **Order of operations** | `agents/pipeline_agent.py` | ⚠️ No CF owns it — [DB-16](../../DESIGN_BLOCKERS.md#db-16), §6.1 |
 | CF-1 | Change-set resolution | `core/changeset/` | ✅ |
 | CF-2 | Parsing and related context | `core/context/` + `core/context/resolver/` | ✅ Sidecar client is a sub-package, not a peer |
 | CF-3 | Execution and evidence | `core/execution/` | ✅ |
 | CF-4 | Context assembly | `core/assembly/` | ✅ Sole owner of the token budget — [DB-05](../../DESIGN_BLOCKERS.md#db-05) |
-| **CF-5** | Finding model **and** provider client | `core/findings/` (model + port) · adapter in `core/agent/` | ❌ **Two reasons to change, and FR-5.8 forbids one package** — §6.2 |
-| CF-6 | The review agent | `core/agent/` | ✅ The only package importing the agent framework |
+| **CF-5** | Finding model **and** provider client | `core/findings/` (model + port) · adapter in `agents/review_port.py` | ❌ **Two reasons to change, and FR-5.8 forbids one package** — §6.2 |
+| CF-6 | The review agent | `agents/review_reporting_agent.py` · accounting in `core/review/` | ✅ The graph lives in the only package importing the agent framework (ADR-0010) |
 | **CF-7** | Output | `core/output/` (verdict, serialise, render) · `cli/` (write, exit) | ❌ **Spans the core/adapter seam** — §4 |
 | CF-8 | Pattern library and regression harness | `core/patterns/` + `tests/corpus/` | ✅ |
 | **CF-9** | Configuration and diagnostics | `core/config/` — but FR-3.5 **executes** in `core/changeset/` | ❌ [DB-12](../../DESIGN_BLOCKERS.md#db-12) |
@@ -104,10 +104,10 @@ flowchart TD
         A1["cli/"]
     end
     subgraph L4["Layer 4 · Orchestration"]
-        P1["core/pipeline/"]
+        P1["agents/pipeline_agent.py"]
     end
     subgraph L3["Layer 3 · Model step"]
-        G1["core/agent/ — CF-6<br/>LangChain · LangGraph"]
+        G1["agents/ — CF-6<br/>LangChain · LangGraph"]
     end
     subgraph L2["Layer 2 · Assembly & output"]
         B1["core/assembly/ — CF-4"]
@@ -250,7 +250,7 @@ SRS §4.2.2 declares `RelatedContextProvider` in TypeScript, returning a `Promis
 
 This matters more than a missing folder. ADR-0001's entire decision is *"our code owns orchestration"*, and AC-10 checks that claim by import list. A pipeline that lives nowhere ends up living **in the CLI** — the one place ADR-0006 says orchestration must not be, because then the Action adapter in v3 would have to reimplement it and the two surfaces would drift.
 
-**Design adds `core/pipeline/`**, in the core, above the capabilities and below the adapter. Raised as [DB-16](../../DESIGN_BLOCKERS.md#db-16) so the stack document can record it.
+**Design adds a pipeline module** (since ADR-0010: `agents/pipeline_agent.py`), above the capabilities and below the adapter. Raised as [DB-16](../../DESIGN_BLOCKERS.md#db-16) so the stack document can record it.
 
 ### 6.2 ⚠️ CF-5's provider client cannot exist where CF-5 lives
 
@@ -258,8 +258,8 @@ This matters more than a missing folder. ADR-0001's entire decision is *"our cod
 |---|---|
 | SRS §3 | CF-5 = "Finding model **and provider client**" |
 | FR-0.3 | A new provider is integrated by mapping its output to the finding model — CF-5's requirement |
-| FR-5.8 | "The agent framework shall be confined to CF-6" |
-| stack §4 | Contract: "Only `core/agent/` may import LangChain or LangGraph" |
+| FR-5.8 | "The agent framework shall be confined to the agents package; no core package shall import it" |
+| stack §4 | Contract: "No package under `core/` may import LangChain, LangGraph or openai — only `agents/` may" |
 
 The provider client **is** the LangChain client. So CF-5 owns a responsibility it is forbidden to implement.
 
@@ -270,7 +270,7 @@ flowchart LR
     subgraph CF5["CF-5 · core/findings/ — Layer 0"]
         PORT["<b>ModelPort</b> (protocol)<br/>plain Python · zero imports<br/>complete(prompt, tools) → FindingDraft[]"]
     end
-    subgraph CF6["CF-6 · core/agent/ — Layer 3"]
+    subgraph CF6["CF-6 · agents/ — Layer 3"]
         ADAPT["<b>LangChainModelAdapter</b><br/>implements ModelPort"]
     end
     ADAPT -.->|"implements"| PORT
@@ -312,10 +312,10 @@ flowchart LR
 
 ```mermaid
 flowchart TD
-    P["core/pipeline/"] -->|"constructs and injects"| TC["<b>ToolCapabilities</b><br/>a port, defined in Layer 0"]
+    P["agents/pipeline_agent.py"] -->|"constructs and injects"| TC["<b>ToolCapabilities</b><br/>a port, defined in Layer 0"]
     TC -.->|"backed by"| C1["CF-1 · file access"]
     TC -.->|"backed by"| C2["CF-2 · outlines, search"]
-    P --> A["core/agent/ — CF-6"]
+    P --> A["agents/ — CF-6"]
     A -->|"calls through the port"| TC
 
     style TC fill:#e8f7e8
@@ -333,7 +333,7 @@ AC-10 names three import contracts. Design specifies **five**, for the reasons i
 |---|---|---|---|
 | 1 | Only `core/output/` and `cli/` may import Rich | FR-10.4a | ✅ |
 | 2 | Only `core/changeset/` may import the git layer | CF-1 encapsulation | ✅ |
-| 3 | Only `core/agent/` may import LangChain or LangGraph | FR-5.8 | ✅ |
+| 3 | **No package under `core/` may import LangChain, LangGraph or openai** — only `agents/` may ([ADR-0010](../adr/0010-agents-package-separate-from-core.md)) | FR-5.8 | ✅ |
 | 4 | Only `core/context/resolver/` may reference the sidecar bundle path | FR-2.6f | ❌ — stack §4 proposes it; no criterion names it |
 | 5 | **No module outside `core/context/` may name a concrete provider class** | **FR-2.6e** | ❌ — **nothing currently checks the SRS's highest-value constraint** |
 | 6 | Nothing imports `cli/`; capabilities do not import each other | §3 | ❌ — new |
@@ -361,7 +361,7 @@ Contract 5 is the one worth insisting on. The SRS calls FR-2.6e *"the highest-va
 
 | Was open | Now |
 |---|---|
-| `core/pipeline/` absent from the stack layout | ✅ [`technical_stack.md`](../technical_stack.md) §4, with import contract 6 keeping it out of the adapter |
+| the pipeline module absent from the stack layout | ✅ [`technical_stack.md`](../technical_stack.md) §4, with import contract 6 keeping it out of the adapter |
 | CF-5's provider client vs FR-5.8 | ✅ **FR-0.3** — CF-5 owns the interface; the implementing client may live in CF-6. Port and adapter, as designed in §6.2 |
 | Who owns the token budget | ✅ **CF-4, solely.** The `budget` parameter that granted CF-2 authority left the specification with the TypeScript declaration ([DO-2](../../DESIGN_BLOCKERS.md#do-2)) |
 | Where FR-3.5's exclusion is applied | ✅ **FR-3.5** now says: at change-set resolution, recorded in the change set so the stated scope is true |

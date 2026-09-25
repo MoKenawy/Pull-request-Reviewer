@@ -187,16 +187,19 @@ Two languages, with the boundary visible in the directory structure.
 pyproject.toml
 src/agentic_review/
     cli/              adapter · Typer entry point, exit codes — translates only
-    core/
-        pipeline/     the fixed order of operations (ADR-0001) — imported by cli/ only
+    agents/           the ONLY package importing LangChain / LangGraph / openai (ADR-0010)
+        pipeline_agent.py          the main agent — the fixed order of operations, as a graph (ADR-0001, ADR-0009)
+        review_reporting_agent.py  CF-6 · the subagent, the one step that calls a model
+        review_port.py             the port's LangChain implementation — the provider client
+    core/             framework-free · every module here is callable as an ordinary function
+        pipeline/     preflight and stage timing — plain functions the main agent calls
         changeset/    CF-1 · git, files and hunks, exclusion applied here (FR-3.5)
         context/      CF-2 · parsing, the depth interface, the provider factory
             resolver/ CF-2 · the sidecar client — the only caller of the bundle
         execution/    CF-3 · subprocess, evidence record
         assembly/     CF-4 · budgets, distillation, eviction — sole budget owner
         findings/     CF-5 · Pydantic models, schema, versioning, the model port
-        agent/        CF-6 · the ONLY package importing LangChain / LangGraph
-                             also holds the port's LangChain implementation
+        review/       CF-6 · call and token accounting — the framework-free half
         output/       CF-7 · verdict, renderers, JSON serialisation
         patterns/     CF-8 · rule library
         config/       CF-9 · settings model, diagnostics
@@ -219,8 +222,9 @@ Three places where the mapping is deliberately not one-to-one:
 
 | | What the taxonomy says | What the tree does | Why |
 |---|---|---|---|
-| **The pipeline** | No CF owns the order of operations | `core/pipeline/` | ADR-0001's decision is that *our code owns orchestration*. Code with no directory lands in its nearest caller, and that is `cli/` — the one place [ADR-0006](./adr/0006-local-cli-core-action-as-adapter.md) says orchestration must not be, because v3's Action adapter would then have to reimplement it |
-| **CF-5** | "Finding model **and** provider interface" | Model and port in `findings/`; the LangChain implementation in `agent/` | FR-5.8 forbids anything outside CF-6 importing the framework, and the provider client *is* the framework. One directory for both could not legally exist |
+| **The pipeline** | No CF owns the order of operations | `agents/pipeline_agent.py`, over plain helpers in `core/pipeline/` | ADR-0001's decision is that *our code owns orchestration*. Code with no directory lands in its nearest caller, and that is `cli/` — the one place [ADR-0006](./adr/0006-local-cli-core-action-as-adapter.md) says orchestration must not be, because v3's Action adapter would then have to reimplement it. [ADR-0010](./adr/0010-agents-package-separate-from-core.md) moved the graph itself out of `core/`, because a module that declares a graph is not a core function |
+| **CF-5** | "Finding model **and** provider interface" | Model and port in `findings/`; the LangChain implementation in `agents/review_port.py` | FR-5.8 forbids any core package importing the framework, and the provider client *is* the framework. One directory for both could not legally exist |
+| **CF-6** | "The review agent" | Graph in `agents/review_reporting_agent.py`; accounting in `core/review/` | [ADR-0010](./adr/0010-agents-package-separate-from-core.md) splits it by kind: the graph is an agent, the call and token counting is an ordinary function and stays testable without a framework |
 | **CF-7** | "Output" | Verdict and rendering in `core/output/`; writing and exit codes in `cli/` | It spans the core/adapter seam. The **verdict is computed in core** — if the adapter decided which findings mattered, it would be deciding what a finding means (FR-10.2) |
 
 The CF → module mapping is maintained in [`design/01-logical-architecture.md`](./design/01-logical-architecture.md) §2, and Appendix B of the specification remains the traceability record. Both axes are kept; neither is derived from the other by copying.
@@ -233,7 +237,8 @@ The CF → module mapping is maintained in [`design/01-logical-architecture.md`]
 |---|---|---|---|
 | 1 | Only `core/output/` and `cli/` may import Rich | FR-10.4a | ✅ |
 | 2 | Only `core/changeset/` may import the git layer | CF-1 encapsulation | ✅ |
-| 3 | Only `core/agent/` may import LangChain or LangGraph | FR-5.8 | ✅ |
+| 3 | **No package under `core/` may import LangChain, LangGraph or openai** — only `agents/` may | FR-5.8 | ✅ *(widened in v1.2; restated over one package in v1.3, [ADR-0010](./adr/0010-agents-package-separate-from-core.md))* |
+| 3b | `agents/pipeline_agent.py` may import LangGraph, but never a provider client | FR-5.8 | ✅ *(added in v1.3)* |
 | 4 | Only `core/context/resolver/` may reference the resolver bundle path | FR-2.6f | ✅ *(added in v1.1)* |
 | 5 | **No module outside `core/context/` may name a concrete related-context implementation** — construction goes through the factory | **FR-2.6e** | ✅ *(added in v1.1)* |
 | 6 | Nothing imports `cli/`; the capability packages do not import each other | The layering in [`design/01-logical-architecture.md`](./design/01-logical-architecture.md) §3 | ❌ |
@@ -275,6 +280,27 @@ Contract 6 has no acceptance criterion because it defends a design decision rath
 ## 7. To verify before pinning
 
 Three things this document asserts that should be tested rather than trusted, because they are the assumptions most likely to be wrong and cheapest to check early:
+
+### Pinned versions
+
+Pinned by the first install in feature 001 (walking skeleton), resolved on 2026-09-17 for CPython 3.12.13 on Windows. `uv.lock` holds them exactly, along with every transitive dependency. This table records them. `tree-sitter` is not installed until feature 004, so it is not pinned until S-2 has run.
+
+| Package | Version | Role |
+|---|---|---|
+| `pydantic` | 2.13.5 | Finding model, report schema, config validation |
+| `pyyaml` | 6.0.3 | Config parsing |
+| `typer` | 0.27.2 | CLI (with `click` 8.5.0) |
+| `rich` | 15.0.0 | Terminal rendering |
+| `langchain-core` | 1.6.3 | Tool binding, messages |
+| `langchain-openai` | 1.6.2 | OpenAI-compatible provider client |
+| `langgraph` | 1.2.11 | Review-step graph (CF-6 only) |
+| `openai` | 3.14.1 | Transitive; its `APIError` hierarchy is mapped to `provider-error` |
+| `pytest` | 9.1.1 | dev |
+| `import-linter` | 2.15 | dev · structural contracts |
+| `jsonschema` | 4.26.0 | dev · independent report-schema validation (SC-002) |
+| `ipykernel` | 7.3.0 | dev · Jupyter kernel for `notebooks/` explorations; not used by the tool or its tests |
+
+### Assumptions to test
 
 | # | Assumption | How to check | If wrong |
 |---|---|---|---|
