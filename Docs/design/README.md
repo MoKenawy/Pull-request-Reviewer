@@ -2,6 +2,8 @@
 
 **Status:** Complete — all six milestones delivered · **Date:** 2026-09-15 · **Serves:** [`../agentic-code-review-srs-v1.md`](../agentic-code-review-srs-v1.md)
 
+The design phase's own report — what it was given, what it found, and how the 24 findings were closed — is [`../../DESIGN_REPORT.md`](../../DESIGN_REPORT.md) at the repository root.
+
 ---
 
 ## Where design sits
