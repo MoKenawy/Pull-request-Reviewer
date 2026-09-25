@@ -11,7 +11,7 @@ tags: [system-analysis, srs, agentic-review, uml, requirements]
 # Phase 1 Agentic Code Review — System Analysis
 
 > [!IMPORTANT]
-> **Non-normative.** This package analyses the baselined specification, [`agentic-code-review-srs-v1.md`](../../agentic-code-review-srs-v1.md), through its extract [`v1-requirements.md`](../../v1-requirements.md). It adds no requirements. Where the two differ, the SRS wins. Where the analysis finds the SRS ambiguous or incomplete, it raises the point in [§7](#7-analyst-findings-and-open-questions) instead of settling it.
+> **Non-normative.** This package analyses the baselined specification, [`agentic-code-review-srs-v1.md`](../../agentic-code-review-srs-v1.md). It adds no requirements. Where the two differ, the SRS wins. Where the analysis finds the SRS ambiguous or incomplete, it raises the point in [§7](#7-analyst-findings-and-open-questions) instead of settling it.
 
 [//]: # (Requirement, acceptance-criterion and risk identifiers are copied verbatim from SRS v1. Nothing is renumbered, per the Docs README convention.)
 
@@ -50,28 +50,14 @@ tags: [system-analysis, srs, agentic-review, uml, requirements]
 
 ## Package Contents
 
-Each diagram lives in its own file under [`assets/`](./assets/) and is embedded below in a collapsed block. The two copies are kept identical.
+Every diagram is embedded directly below, in a collapsed block at the section it illustrates. [`assets/`](./assets/) holds only the one diagram Mermaid cannot express inline on GitHub:
 
 | Asset | Engine | Diagram | Used in |
 |:---|:---:|:---|:---:|
-| [`c4_context.md`](./assets/c4_context.md) | Mermaid | System Context (C4 L1) | [§1.2](#12-system-context-diagram) |
-| [`stakeholder_value_map.md`](./assets/stakeholder_value_map.md) | Mermaid | Stakeholder Value Map | [§1.3](#13-stakeholder-value-map) |
 | [`uc_overview.puml`](./assets/uc_overview.puml) | PlantUML | Use case | [§1.4](#14-use-case-overview) |
-| [`req_core_functions.md`](./assets/req_core_functions.md) | Mermaid | `requirementDiagram` | [§2.3](#23-requirement-diagrams) |
-| [`req_cf2_context_depth.md`](./assets/req_cf2_context_depth.md) | Mermaid | `requirementDiagram` | [§2.3](#23-requirement-diagrams) |
-| [`req_cf6_review_agent.md`](./assets/req_cf6_review_agent.md) | Mermaid | `requirementDiagram` | [§2.3](#23-requirement-diagrams) |
-| [`req_supporting_functions.md`](./assets/req_supporting_functions.md) | Mermaid | `requirementDiagram` | [§2.3](#23-requirement-diagrams) |
-| [`domain_model.md`](./assets/domain_model.md) | Mermaid | `classDiagram` | [§4.3](#43-conceptual-class-diagram) |
-| [`dev_journey.md`](./assets/dev_journey.md) | Mermaid | `flowchart` | [§5.1](#51-developer-journey-business-activity) |
-| [`architecture_overview.md`](./assets/architecture_overview.md) | Mermaid | `flowchart` | [§5.2](#52-system-architecture-overview) |
-| [`seq_review_pass.md`](./assets/seq_review_pass.md) | Mermaid | `sequenceDiagram` | [§5.4](#54-end-to-end-review-pass) |
-| [`seq_context_depth0.md`](./assets/seq_context_depth0.md) | Mermaid | `sequenceDiagram` | [§5.5](#55-context-laddering) |
-| [`seq_context_depth1.md`](./assets/seq_context_depth1.md) | Mermaid | `sequenceDiagram` | [§5.5](#55-context-laddering) |
-| [`state_check_execution.md`](./assets/state_check_execution.md) | Mermaid | `stateDiagram-v2` | [§5.6](#56-check-execution-lifecycle) |
-| [`flow_failure_modes.md`](./assets/flow_failure_modes.md) | Mermaid | `flowchart` | [§6.1](#61-fail-fast-versus-degrade) |
 
 > [!NOTE]
-> PlantUML is used once, for the use case diagram, because Mermaid has no native use case notation. GitHub does not render PlantUML, so that one diagram needs a PlantUML extension or `java -jar plantuml.jar`. Every other diagram is Mermaid and renders natively on GitHub, both in its asset file and in the collapsed blocks below.
+> PlantUML is used once, for the use case diagram, because Mermaid has no native use case notation. GitHub does not render PlantUML, so that one diagram needs a PlantUML extension or `java -jar plantuml.jar`. Every other diagram is Mermaid and renders natively on GitHub in the collapsed blocks below.
 
 ---
 
@@ -104,8 +90,6 @@ Three properties set the domain boundary:
 
 ### 1.2 System Context Diagram
 
-[View System Context Diagram](./assets/c4_context.md) · Mermaid `flowchart` (C4 Level 1).
-
 This is the 30-second elevator pitch. The system is shown as a single entity in the center, surrounded by the human users and external systems it interacts with. It establishes the boundary: what is inside the system's control, and what is external.
 
 <details>
@@ -132,8 +116,6 @@ flowchart LR
 </details>
 
 ### 1.3 Stakeholder Value Map
-
-[View Stakeholder Value Map](./assets/stakeholder_value_map.md) · Mermaid `flowchart`.
 
 This diagram maps the system's value proposition. It connects the human stakeholders to the specific capabilities they desire and the tangible artifacts they receive in return. Use this to align product discussions and ensure development effort tracks to actual user value.
 
@@ -186,7 +168,7 @@ flowchart LR
 <details>
 <summary>Use case diagram source (PlantUML)</summary>
 
-<img src="assets\Agentic Code Review-Use Case Overview.svg" alt="Square Logo" />
+<img src="./assets/Agentic Code Review-Use Case Overview.svg" alt="Use case overview diagram, rendered from uc_overview.puml" />
 
 </details>
 
@@ -254,8 +236,6 @@ The requirement view is split across four diagrams of 9 to 16 nodes each: an ove
 > Node names such as `CF2` and `AC12` drop the hyphen because Mermaid identifiers cannot contain one. Each requirement's `id` field carries the real identifier.
 
 #### Core functions CF-1 to CF-6
-
-[View Requirement Diagram](./assets/req_core_functions.md)
 
 <details>
 <summary>Requirement diagram: CF-1 to CF-6 and their acceptance criteria</summary>
@@ -376,8 +356,6 @@ AC12 - verifies -> CF2
 
 #### CF-2 drill-down: the related-context interface
 
-[View Requirement Diagram](./assets/req_cf2_context_depth.md)
-
 <details>
 <summary>Requirement diagram: the FR-2.6 family and its structural checks</summary>
 
@@ -469,8 +447,6 @@ AC12 - verifies -> FR26G
 
 #### CF-6 drill-down: the review agent and its ceiling
 
-[View Requirement Diagram](./assets/req_cf6_review_agent.md)
-
 <details>
 <summary>Requirement diagram: the tool-call ceiling and what holds it in place</summary>
 
@@ -547,8 +523,6 @@ AC11 - verifies -> FR57B
 </details>
 
 #### Supporting functions CF-7 to CF-9 and cross-cutting
-
-[View Requirement Diagram](./assets/req_supporting_functions.md)
 
 <details>
 <summary>Requirement diagram: output, measurement, configuration and cross-cutting</summary>
@@ -842,8 +816,6 @@ The roles come from SRS §2.2. Each story maps to exactly one acceptance criteri
 
 ### 4.3 Conceptual Class Diagram
 
-[View Class Diagram](./assets/domain_model.md)
-
 Read the diagram left to right. It starts with what is reviewed (`ChangeSet`), then what the reviewer sees (`RelatedContextResult`, `EvidenceRecord`), then what it says (`FindingModel`), and finally what that is measured against (`PatternRule`, `RegressionCase`). The dashed dependency from `Finding` to `CheckResult` is deliberately weak. Nothing in the finding's structure links it to the evidence it relies on, which is the gap Q-5 raises.
 
 <details>
@@ -941,8 +913,6 @@ classDiagram
 
 ### 5.1 Developer Journey (Business Activity)
 
-[View Developer Journey Diagram](./assets/dev_journey.md) · Mermaid `flowchart`.
-
 This diagram maps the business-level workflow of the developer using the tool. Unlike a sequence diagram that shows message calls, this focuses on *what the human does* before, during, and after the review. It highlights the iteration loop and decision points.
 
 <details>
@@ -972,8 +942,6 @@ flowchart TD
 </details>
 
 ### 5.2 System Architecture Overview
-
-[View Architecture Overview](./assets/architecture_overview.md) · Mermaid `flowchart`.
 
 This container-level diagram provides the "map" of the internal system structure. It groups the Core Functions (CF-1 through CF-9) into logical components, showing the high-level data flow. This is the diagram a developer pins above their desk to understand how the pieces fit together.
 
@@ -1043,8 +1011,6 @@ Five behavioural invariants hold across every path:
 
 ### 5.4 End-to-End Review Pass
 
-[View Sequence Diagram](./assets/seq_review_pass.md)
-
 This is one invocation at the default ceiling of zero. The outer `alt` separates the fail-fast path, which produces no review, from the pipeline path. Every `alt` inside the pipeline is a degradation that still ends in a review.
 
 <details>
@@ -1109,8 +1075,6 @@ sequenceDiagram
 
 #### Depth 0
 
-[View Sequence Diagram](./assets/seq_context_depth0.md)
-
 <details>
 <summary>Sequence diagram: depth 0, syntax only</summary>
 
@@ -1135,8 +1099,6 @@ sequenceDiagram
 </details>
 
 #### Depth 1
-
-[View Sequence Diagram](./assets/seq_context_depth1.md)
 
 <details>
 <summary>Sequence diagram: depth 1, with the sidecar and every degradation it can raise</summary>
@@ -1182,8 +1144,6 @@ sequenceDiagram
 
 ### 5.6 Check Execution Lifecycle
 
-[View State Diagram](./assets/state_check_execution.md)
-
 Each check ends in one of four recorded states, and a phase-level timeout can cut the phase short. `Passed` and `Failed` are both `run` in FR-4.5a's terms; the pass/fail outcome is recorded separately, under FR-4.5b. The capability AC-7 depends on is keeping `Skipped` and `Errored` apart from a clean pass.
 
 <details>
@@ -1225,8 +1185,6 @@ stateDiagram-v2
 ## 6. Resilience, Degradation, and Traceability Matrix
 
 ### 6.1 Fail Fast versus Degrade
-
-[View Flowchart](./assets/flow_failure_modes.md)
 
 v1 has two failure behaviours and no third. A missing prerequisite stops the run before any review exists, and the error names the cause. Anything that goes wrong after that point degrades: the review is still produced, and it states what was lost. FR-11.2 makes the second behaviour universal, and the SRS singles it out as the requirement most likely to be quietly violated.[^fr112]
 
