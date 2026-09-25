@@ -40,3 +40,71 @@ packages = ["src/agentic_review"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-p no:cacheprovider"
+
+# Structural contracts (technical_stack.md §4, research R-20). Contracts 4 and 5 arrive with feature 004.
+[tool.importlinter]
+root_package = "agentic_review"
+include_external_packages = true
+
+[[tool.importlinter.contracts]]
+name = "1 - only core.output and cli may import Rich"
+type = "forbidden"
+source_modules = [
+    "agentic_review.agents",
+    "agentic_review.core.pipeline",
+    "agentic_review.core.changeset",
+    "agentic_review.core.assembly",
+    "agentic_review.core.findings",
+    "agentic_review.core.review",
+    "agentic_review.core.config",
+]
+forbidden_modules = ["rich"]
+allow_indirect_imports = true
+
+[[tool.importlinter.contracts]]
+name = "2 - only core.changeset may import the git layer"
+type = "forbidden"
+source_modules = [
+    "agentic_review.cli",
+    "agentic_review.agents",
+    "agentic_review.core.pipeline",
+    "agentic_review.core.assembly",
+    "agentic_review.core.findings",
+    "agentic_review.core.review",
+    "agentic_review.core.output",
+    "agentic_review.core.config",
+]
+forbidden_modules = ["agentic_review.core.changeset._git"]
+allow_indirect_imports = true
+
+# ADR-0010: core/ is framework-free; agents/ is the only place LangChain, LangGraph or openai may appear.
+# This is the whole point of the split, and it is now one rule over one package rather than an enumeration.
+[[tool.importlinter.contracts]]
+name = "3 - core is framework-free: no core package may import LangChain, LangGraph or openai"
+type = "forbidden"
+source_modules = [
+    "agentic_review.cli",
+    "agentic_review.core",
+]
+forbidden_modules = ["langchain_core", "langchain_openai", "langgraph", "openai"]
+allow_indirect_imports = true
+
+# The provider client stays out of the main agent: pipeline_agent declares the order, it does not talk to a model.
+[[tool.importlinter.contracts]]
+name = "3b - the pipeline agent may import LangGraph, but never a provider client"
+type = "forbidden"
+source_modules = ["agentic_review.agents.pipeline_agent"]
+forbidden_modules = ["langchain_core", "langchain_openai", "openai"]
+allow_indirect_imports = true
+
+[[tool.importlinter.contracts]]
+name = "6 - layers: nothing imports cli; capabilities do not import each other"
+type = "layers"
+layers = [
+    "agentic_review.cli",
+    "agentic_review.agents",
+    "agentic_review.core.pipeline",
+    "agentic_review.core.assembly | agentic_review.core.output | agentic_review.core.review",
+    "agentic_review.core.changeset",
+    "agentic_review.core.findings | agentic_review.core.config",
+]
