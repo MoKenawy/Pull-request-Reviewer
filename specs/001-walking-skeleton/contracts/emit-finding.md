@@ -10,9 +10,16 @@ The other side of this contract is **the model**, which cannot be changed togeth
 ## The tool
 
 - **Name**: `emit_finding`
-- **Description**: "Report one review finding. This is the ONLY way a finding is recorded; prose is discarded."
+- **Description**: as `TOOL_DESCRIPTION` in `core/findings/schema.py`. It states that one call records one specific
+  problem at one location, that the call is the only way a finding is recorded and prose is discarded unread, and that
+  every call is validated against the change under review, so a rejected call records nothing. *(Reworded during
+  implementation, 2026-09-17: the description and the per-field descriptions are what the provider reads, and the
+  original one sentence left the model to guess the rest. Unmeasured — see the note at the end.)*
 - **Parameters**: **generated** from `FindingDraft` (see [data-model.md §3](../data-model.md#3--cf-5--findings)),
-  with `$ref`s inlined (R-11). Its content equals 04 §4.1:
+  with `$ref`s inlined (R-11). Each field and each evidence arm also carries a `description` generated from the model,
+  so the field rules the model must follow (line numbers in the new version, the severity rubric, the category list,
+  `ruleId` left unset) reach it with the schema rather than only in the prompt. Types, required fields and enums equal
+  04 §4.1:
 
 ```jsonc
 {
@@ -42,7 +49,11 @@ The other side of this contract is **the model**, which cannot be changed togeth
 `additionalProperties: false` and a `kind` discriminator.)*
 
 **Test obligation**: the parameters sent to the provider equal `inline_refs(FindingDraft.model_json_schema(by_alias=True))`.
-A hand-edited schema fails the test.
+A hand-edited schema fails the test. Descriptions are therefore edited on the Pydantic model, never in the schema.
+
+> **The wording of the description and of the instructions is unmeasured** (Principle VI). Feature 003's corpus is what
+> decides whether one wording reviews better than another; until then no such claim is made here. What is not a matter of
+> wording is the *shape* the model must produce: a call that ignores the field rules is rejected at the call boundary.
 
 ## Binding rules
 

@@ -27,7 +27,7 @@ flowchart TD
         O["core/output/<br/>computes Verdict · builds ReviewReport"]
     end
     subgraph L3["Layer 3"]
-        G["core/agent/<br/>implements ReviewPort"]
+        G["agents/review_port.py<br/>implements ReviewPort"]
     end
     CS --> F
     A --> CS & F
@@ -197,7 +197,7 @@ into a `budget-exhausted` degradation (source `CF-4`) and skips the review stage
 
 ## 5 · CF-6 · The review step's result
 
-### `ReviewPort` (a protocol in `core/findings/`, implemented in `core/agent/`)
+### `ReviewPort` (a protocol in `core/findings/`, implemented in `agents/review_port.py`)
 
 `review(context: ReviewContext) -> ReviewOutcome`. It **never raises** for anything the spec names. Provider
 and validation failures come back inside the outcome (Principle V).

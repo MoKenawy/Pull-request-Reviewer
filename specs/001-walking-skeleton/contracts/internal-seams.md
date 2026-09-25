@@ -9,7 +9,7 @@ crosses each seam may not** without revisiting this plan.
 
 ---
 
-## 1 · Pipeline: the only owner of order (ADR-0001) · `core/pipeline/`
+## 1 · Pipeline: the only owner of order (ADR-0001) · `agents/pipeline_agent.py`
 
 ```python
 @dataclass(frozen=True)
@@ -35,7 +35,7 @@ def run_review(
     env: Mapping[str, str],
     clock: Callable[[], float] = time.monotonic,
     now: Callable[[], datetime] = utc_now,
-    review_port: ReviewPort | None = None,   # None = build the default through core/agent
+    review_port: ReviewPort | None = None,   # None = build the default through agents/review_port.py
 ) -> PreflightFailure | Reviewed: ...
 ```
 
@@ -63,13 +63,13 @@ def assemble(change_set: ChangeSet, line_counts: Mapping[str, int], budget: Budg
              ) -> ReviewContext | BudgetExhausted: ...
 ```
 
-## 4 · Review port: provider-independent (FR-0.3) · protocol in `core/findings/`, implementation in `core/agent/`
+## 4 · Review port: provider-independent (FR-0.3) · protocol in `core/findings/`, implementation in `agents/review_port.py`
 
 ```python
 class ReviewPort(Protocol):
     def review(self, context: ReviewContext) -> ReviewOutcome: ...
 
-# core/agent/ - the ONLY module importing langchain_* / langgraph / openai
+# agents/ - the ONLY package importing langchain_* / langgraph / openai (ADR-0010)
 def build_review_port(settings: AgentSettings, credential: Credential,
                       *, chat_model: BaseChatModel | None = None) -> ReviewPort: ...
 ```
