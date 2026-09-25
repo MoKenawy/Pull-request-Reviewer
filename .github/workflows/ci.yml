@@ -18,5 +18,7 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
       - run: uv sync
+      # Structural contracts 1, 2, 3, 6 (FR-030)
+      - run: uv run lint-imports
       # Offline suite: no secrets, network blocked by tests/conftest.py (SC-006)
       - run: uv run pytest
