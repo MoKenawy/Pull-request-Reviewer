@@ -7,6 +7,7 @@
 | **[`agentic-code-review-srs-v1.md`](./agentic-code-review-srs-v1.md)** | **The specification for the version being built.** Normative — if you are implementing or reviewing an implementation, this is the document. Currently **v1.1**; §10 records what the design review changed and why. |
 | [`technical_stack.md`](./technical_stack.md) | **What the system is built with** — libraries, protocols, repository layout, and the checks that enforce the seams. Subordinate to the specification: it never relaxes a requirement. |
 | [`adr/`](./adr/) | Architecture decision records. Why the system is shaped the way it is. Start with [ADR-0006](./adr/0006-local-cli-core-action-as-adapter.md), then [ADR-0007](./adr/0007-python-harness-typescript-target.md), then the [index](./adr/README.md). |
+| [`operation_guidelines.md`](./operation_guidelines.md) | **How to install, configure, run and troubleshoot the tool, and how to work on it.** Describes what the code does today, not the specification. Non-normative. |
 | [`design/`](./design/) | **How the system is put together** — components, types, behaviour, contracts. Subordinate to both documents above: it introduces no requirement and no library. Start with [the design plan](./design/README.md). |
 
 Places where the analysis hand-off contradicts itself, or stops short of a decision design cannot make alone, are collected in [`DESIGN_BLOCKERS.md`](../DESIGN_BLOCKERS.md) at the repository root, with a response log for the analysis team.
@@ -49,11 +50,15 @@ flowchart TD
     T -.->|"constrains"| D
     D -.->|"what design cannot<br/>decide alone"| B["DESIGN_BLOCKERS.md"]
     B -.->|"answered by analysis"| S
+    D --> F["specs/001-walking-skeleton/<br/>feature spec, plan, tasks"]
+    F ==>|"implemented by"| Code["src/agentic_review/"]
+    S -.->|"describes what<br/>Code does today"| G["operation_guidelines.md"]
 
     style S fill:#e8f7e8
     style T fill:#eef3fa
     style D fill:#eef3fa
     style B fill:#ffe6e6
+    style Code fill:#eef3fa
 ```
 
 **The three documents an implementer needs** are the specification (what must be true), the stack (what to build it with), and ADR-0007 (why that stack). [`design/`](./design/) sits between those and the code: it decides how the parts fit together, and it may not change what any of the three says. Everything else is background.
