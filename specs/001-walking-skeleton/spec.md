@@ -207,6 +207,50 @@ Each requirement names the SRS identifiers it delivers. *Partial* means the SRS 
 - **FR-030**: Automated structural checks MUST verify, on every commit, the rules this feature's components make checkable: only the output component uses the terminal-rendering dependency; only the change-set component uses git; only the review-step component uses the agent framework; nothing depends on the command-line layer. — *FR-5.8, FR-10.2, AC-10 (partial: the two context-provider clauses arrive in 004)*
 - **FR-031**: Automated tests MUST run with no credential and no network, using a stand-in model, and MUST cover every acceptance scenario in Stories 1–5 and every edge case above.
 
+### Traceability to the SRS
+
+A scannable rollup of the trailing italic clause on each requirement above. `src/` and `tests/` cite the SRS column, never this feature's own IDs, per `CLAUDE.md`'s "requirement identifiers" convention — a bare `FR-` in code is always an SRS (`FR-x.y`) identifier.
+
+| Feature ID | SRS ID(s) | Partial — what's missing, closed by | Realised in |
+|---|---|---|---|
+| FR-001 | FR-9.3 | test-script check — **002** | `core/pipeline/preflight.py` |
+| FR-002 | FR-1.2a–d | | `core/config/loader.py` |
+| FR-003 | FR-1.2d | | `core/config/loader.py`, `core/config/settings.py` |
+| FR-004 | FR-1.3a | | `core/config/credentials.py` |
+| FR-005 | FR-10.3a | | `core/changeset/resolve.py` |
+| FR-006 | FR-10.3b | | `core/changeset/resolve.py`, `core/changeset/summary.py` |
+| FR-007 | FR-10.3c | | `core/changeset/model.py`, `core/changeset/diff_parser.py` |
+| FR-008 | FR-3.5 | | `core/config/settings.py`, `core/changeset/exclusion.py` |
+| FR-009 | *(none — TS/JS-only scope; a project decision, not an SRS Must)* | | `core/changeset/diff_parser.py` |
+| FR-010 | *(none — "nothing to review" outcome; not separately numbered in the SRS)* | | `agents/pipeline_agent.py`, `core/output/verdict.py` |
+| FR-011 | FR-5.7a, FR-5.1 | | `agents/review_port.py`, `agents/review_reporting_agent.py` |
+| FR-012 | FR-2.5b | | `core/assembly/prompt.py` |
+| FR-013 | FR-5.6a | | `core/findings/port.py`, `core/findings/validation.py` |
+| FR-014 | FR-5.2, FR-5.2a–c | | `core/findings/model.py` |
+| FR-015 | FR-5.9 | | `core/findings/model.py` |
+| FR-016 | FR-5.6c | | `agents/review_reporting_agent.py` |
+| FR-017 | FR-5.7 | turn-by-turn remaining-calls signal — **005** | `core/review/accounting.py` |
+| FR-018 | FR-5.10 | | `agents/review_port.py`, `agents/review_reporting_agent.py` |
+| FR-019 | FR-2.5b, FR-11.1 | | `core/assembly/budget.py`, `core/assembly/prompt.py` |
+| FR-020 | FR-11.2 | | `agents/review_reporting_agent.py` |
+| FR-021 | FR-11.3 | | `core/review/accounting.py` |
+| FR-022 | FR-11.2 | | `core/pipeline/run.py`, `core/findings/report.py` |
+| FR-023 | FR-10.4c | | `core/output/verdict.py`, `cli/exit_codes.py` |
+| FR-024 | FR-8.1b | | `core/output/terminal.py` |
+| FR-025 | FR-8.2a, FR-10.4b | | `core/output/json_out.py` |
+| FR-026 | FR-8.2c, FR-11.3 | context depth — **004** | `core/findings/report.py` |
+| FR-027 | FR-10.4a | | `core/output/terminal.py`, `core/output/json_out.py` |
+| FR-028 | FR-0.4 | | `cli/app.py` |
+| FR-029 | FR-11.3 | | `core/pipeline/timing.py`, `core/findings/report.py` |
+| FR-030 | FR-10.3c, FR-5.8, FR-10.2 | context-provider clauses — **004** | `tests/structural/` |
+| FR-031 | *(none — Principle VII, constitution)* | | `tests/` |
+
+**No SRS parent**: FR-009, FR-010, FR-031 — each maps to a project or constitution decision, not a numbered SRS Must/Should.
+
+**SRS IDs realised in code with no feature-001 owner**: FR-0.3 (`core/findings/port.py` — the provider-independent interface itself), FR-5.1 (`core/agent/graph.py` — no checkpointer), FR-5.5 (`core/findings/fingerprint.py` — cross-run de-duplication, v2).
+
+A future feature's own traceability subsection follows this same shape, in its own `specs/NNN-*/spec.md`.
+
 ### Deliberately not in this feature
 
 | Not delivered | SRS | Arrives in |
