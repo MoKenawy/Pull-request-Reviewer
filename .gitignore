@@ -1,2 +1,24 @@
 .claude/*
 .specify/*
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+dist/
+build/
+*.egg-info/
+.pytest_cache/
+.import_linter_cache/
+
+# Universal
+.DS_Store
+Thumbs.db
+*.tmp
+*.swp
+.env*
+!.env.example
+
+# Jupyter
+.ipynb_checkpoints/
