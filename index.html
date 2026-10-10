@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Review code changes with an AI-powered code review agent." />
+  <title>Pull Request Reviewer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/style.css" />
+  <script src="assets/js/config.js" defer></script>
+  <script src="assets/js/api.js" defer></script>
+  <script src="assets/js/ui.js" defer></script>
+  <script src="assets/js/app.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#" aria-label="Pull Request Reviewer home">
+      <span class="brand-mark">&lt;/&gt;</span>
+      <span><strong>Pull Request Reviewer</strong><small>AI-powered code review</small></span>
+    </a>
+    <div class="header-actions">
+      <span id="mode-badge" class="mode-badge">DEMO MODE</span>
+      <a class="github-link" href="https://github.com/MoKenawy/Pull-request-Reviewer" target="_blank" rel="noreferrer">GitHub ↗</a>
+    </div>
+  </header>
+
+  <main class="page-shell">
+    <section class="intro-row">
+      <div><p class="eyebrow">CODE QUALITY WORKSPACE</p><h1>Review your code with confidence.</h1><p class="intro-copy">Paste a snippet, upload a source file, or prepare a GitHub pull request for review.</p></div>
+      <button id="load-example" class="button button-secondary" type="button">✦ Load example</button>
+    </section>
+
+    <div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
+
+    <div class="workspace-grid">
+      <section class="panel input-panel" aria-labelledby="input-heading">
+        <div class="panel-heading"><div><span class="section-kicker">STEP 01</span><h2 id="input-heading">Code to review</h2></div><span class="subtle-label">Input</span></div>
+        <div class="tabs" role="tablist" aria-label="Review input type">
+          <button class="tab is-active" id="tab-paste" role="tab" aria-selected="true" aria-controls="paste-panel" data-tab="paste" type="button">Paste code</button>
+          <button class="tab" id="tab-upload" role="tab" aria-selected="false" aria-controls="upload-panel" data-tab="upload" type="button">Upload file</button>
+          <button class="tab" id="tab-pr" role="tab" aria-selected="false" aria-controls="pr-panel" data-tab="pr" type="button">GitHub PR</button>
+        </div>
+
+        <div id="paste-panel" class="tab-panel" role="tabpanel" aria-labelledby="tab-paste">
+          <label class="field-label" for="code-input">Source code</label>
+          <div class="editor-shell"><div class="editor-topline"><span class="traffic-lights"><i></i><i></i><i></i></span><span id="editor-filename">snippet.js</span><span id="line-count">0 lines</span></div><textarea id="code-input" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Code to review" placeholder="Paste your code here..." rows="15"></textarea></div>
+          <div class="editor-meta"><span id="char-count">0 characters</span><button id="clear-code" class="text-button" type="button">Clear code</button></div>
+        </div>
+
+        <div id="upload-panel" class="tab-panel" role="tabpanel" aria-labelledby="tab-upload" hidden>
+          <label class="field-label" for="file-input">Choose a source file</label>
+          <label class="dropzone" id="dropzone" for="file-input"><span class="upload-icon">↑</span><strong>Drop a code file here</strong><span>or click to browse your device</span><small>Text-based source files · up to 1 MB</small></label>
+          <input id="file-input" type="file" hidden accept=".js,.jsx,.ts,.tsx,.py,.java,.c,.h,.cpp,.cs,.go,.rs,.php,.rb,.swift,.kt,.html,.css,.json,.md,.txt,.sql,.sh,.yaml,.yml,.xml,.vue,.svelte" />
+          <div id="selected-file" class="selected-file" hidden></div>
+          <p class="helper-text">The selected file is read in your browser. It is not uploaded until you start a review.</p>
+        </div>
+
+        <div id="pr-panel" class="tab-panel" role="tabpanel" aria-labelledby="tab-pr" hidden>
+          <label class="field-label" for="pr-url-input">GitHub pull request URL</label>
+          <input id="pr-url-input" class="text-input mono" type="url" placeholder="https://github.com/owner/repository/pull/123" autocomplete="url" />
+          <p class="helper-text">Demo mode validates the URL but does not contact GitHub. Real PR fetching needs a matching backend endpoint and any required GitHub permissions.</p>
+          <button id="validate-pr" class="button button-secondary full-width" type="button">Validate PR URL</button>
+          <div id="pr-validation" class="inline-status" role="status" hidden></div>
+        </div>
+
+        <div class="review-options"><label class="field-label" for="language-select">Language <span class="optional">(optional)</span></label><select id="language-select" class="text-input"><option value="auto">Auto-detect</option><option>JavaScript</option><option>TypeScript</option><option>Python</option><option>Java</option><option>C++</option><option>C#</option><option>Go</option><option>Rust</option><option>PHP</option><option>HTML/CSS</option><option>Other</option></select></div>
+        <button id="run-review" class="button button-primary full-width" type="button"><span id="run-icon">✦</span><span id="run-label">Start AI review</span></button>
+        <p class="privacy-note">Review input is sent only when you explicitly start a review in live API mode.</p>
+      </section>
+
+      <section class="panel results-panel" aria-labelledby="results-heading">
+        <div class="panel-heading"><div><span class="section-kicker">STEP 02</span><h2 id="results-heading">Review results</h2></div><span id="result-state" class="status-pill status-idle">Waiting for input</span></div>
+        <div id="results-empty" class="empty-state"><div class="empty-art"><span>⌘</span><i>✦</i></div><h3>Your review will appear here</h3><p>Run a review to see findings, severity, explanations, and suggested fixes.</p><span class="empty-hint">No code is reviewed automatically.</span></div>
+        <div id="results-loading" class="loading-state" hidden><span class="spinner"></span><h3>Review in progress</h3><p id="loading-message">Preparing your code…</p><div class="loading-track"><span></span></div></div>
+        <div id="results-content" hidden>
+          <div class="summary-grid">
+            <button class="summary-card critical-card" data-filter="critical" type="button"><strong id="count-critical">0</strong><span>Critical</span></button>
+            <button class="summary-card warning-card" data-filter="warning" type="button"><strong id="count-warning">0</strong><span>Warnings</span></button>
+            <button class="summary-card suggestion-card" data-filter="suggestion" type="button"><strong id="count-suggestion">0</strong><span>Suggestions</span></button>
+            <button class="summary-card total-card is-selected" data-filter="all" type="button"><strong id="count-total">0</strong><span>Total</span></button>
+          </div>
+          <div class="findings-heading"><h3>Findings</h3><button id="reset-filter" class="text-button" type="button">Show all</button></div>
+          <div id="findings-list" class="findings-list"></div>
+          <section class="ai-summary"><div class="summary-icon">✦</div><div><strong>Review summary</strong><p id="summary-text"></p></div></section>
+          <div class="results-footer"><span id="result-source">Demo result</span><button id="copy-report" class="button button-secondary" type="button">Copy report</button></div>
+        </div>
+      </section>
+    </div>
+    <footer class="page-footer"><span>Pull Request Reviewer</span><span>Built for clearer, safer code reviews.</span></footer>
+  </main>
+</body>
+</html>
