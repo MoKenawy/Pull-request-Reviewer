@@ -12,6 +12,11 @@ build/
 .pytest_cache/
 .import_linter_cache/
 
+# Chat UI: the Next.js app in frontend/ and the LangGraph dev server's local state
+node_modules/
+.next/
+.langgraph_api/
+
 # Universal
 .DS_Store
 Thumbs.db
