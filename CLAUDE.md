@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Current state
 
-**Feature 001, the walking skeleton, is built** (User Story 1 complete; `specs/001-walking-skeleton/tasks.md` tracks the rest). `src/agentic_review/` has 44 Python modules — CLI, pipeline, and the CF-1/CF-4/CF-5/CF-6/CF-7/CF-9 core functions; CF-2, CF-3 and CF-8 are not built yet (features 004, 002, 003). 346 tests run offline in under a minute, plus 5 import-linter structural contracts and a GitHub Actions CI matrix on Python 3.12/3.13, Linux and Windows.
+**Feature 001, the walking skeleton, is built** (User Story 1 complete; `specs/001-walking-skeleton/tasks.md` tracks the rest). `src/agentic_review/` has 45 Python modules — CLI, pipeline, the experimental chat agent, and the CF-1/CF-4/CF-5/CF-6/CF-7/CF-9 core functions; CF-2, CF-3 and CF-8 are not built yet (features 004, 002, 003). 348 tests run offline in under a minute, plus 5 import-linter structural contracts and a GitHub Actions CI matrix on Python 3.12/3.13, Linux and Windows.
 
 **Commands** (Python ≥3.12, via [uv](https://docs.astral.sh/uv/)):
 
@@ -23,6 +23,15 @@ uv run python -m pytest
 ```
 
 `Docs/operation_guidelines.md` is the full how-to-install/run/troubleshoot guide; it describes what the code does today, not the specification.
+
+**An experimental chat UI is being added on the `UI` branch.** It is two processes: a LangGraph dev server serving the chat graph in `agents/chat_agent.py` (named in `langgraph.json`), and a Next.js + assistant-ui app in `frontend/`. Today it is a **wire check** — the graph answers with a fixed line and reviews nothing. It is **not yet covered by an ADR or by `Docs/technical_stack.md`**; both are owed before it stops being experimental. Its Python dependency lives in the `ui` dependency group, which a plain `uv sync` and CI do not install.
+
+```
+uv run --group ui langgraph dev --no-browser     # the chat graph, http://localhost:2024
+npm run dev                                      # in frontend/ — the UI, http://localhost:3000
+```
+
+On Windows, if the first fails with the trampoline error above, use `uv run --group ui python -m langgraph_cli dev --no-browser`.
 
 The work is an **agentic code reviewer**: a local CLI that reviews a TypeScript/JavaScript change set by parsing it, running the repository's own tests and type-check, and passing that evidence to a single model pass that emits schema-validated findings. Only the `review` command is implemented; `regression` and `schema` are not built.
 
