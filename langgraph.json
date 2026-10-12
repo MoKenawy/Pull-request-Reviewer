@@ -1,0 +1,8 @@
+{
+  "python_version": "3.12",
+  "dependencies": ["."],
+  "graphs": {
+    "review_chat": "./src/agentic_review/agents/chat_agent.py:graph"
+  },
+  "env": ".env"
+}

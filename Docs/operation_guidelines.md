@@ -26,6 +26,7 @@ with them, this guide is wrong.
 9. [Develop and verify](#9-develop-and-verify)
 10. [Run the S-1 probe](#10-run-the-s-1-probe)
 11. [Not yet available](#11-not-yet-available)
+12. [Run the chat UI (experimental)](#12-run-the-chat-ui-experimental)
 
 ---
 
@@ -63,7 +64,8 @@ flowchart LR
 | uv | ≥ 0.11 | `uv --version` |
 | CPython | 3.12 or 3.13 | `uv python list --only-installed` |
 
-Node and `tree-sitter` are **not** needed yet.
+Node and `tree-sitter` are **not** needed yet. The one exception is the experimental chat UI, which needs Node
+([§12](#12-run-the-chat-ui-experimental)); the command-line tool does not.
 
 ### Set up the environment
 
@@ -571,3 +573,87 @@ Each run is a real, rate-limited API call; 50 runs per model take a while on the
 | Pattern rules, `regression` command, catch rate | Feature 003 |
 | Parsing and related context (`--depth`), resolver sidecar | Feature 004 |
 | Investigation tools (`--investigate`) | Feature 005 |
+
+---
+
+## 12. Run the chat UI (experimental)
+
+A browser front end for the tool, being built on the `UI` branch. **Today it is a wire check**: the chat answers
+every message with one fixed line and reviews nothing. It exists to prove that the two processes below reach each
+other.
+
+It is **not covered by the specification, an ADR or [`technical_stack.md`](./technical_stack.md) yet**. Those are
+owed before it stops being experimental.
+
+```mermaid
+flowchart LR
+    B["Browser"] --> N["Next.js + assistant-ui<br/>frontend/ · :3000"]
+    N -->|"/api proxy<br/>same origin only"| L["LangGraph dev server<br/>:2024"]
+    L --> G["chat graph<br/>agents/chat_agent.py"]
+    G -.->|"not wired yet"| P["the review pipeline"]
+```
+
+The review pipeline's own graph is not what the server serves. Its state has no `messages`, which a chat runtime
+needs, so the UI gets a chat-shaped graph of its own; [`langgraph.json`](../langgraph.json) names it `review_chat`.
+
+### Prerequisites
+
+| Tool | Version | Check |
+|---|---|---|
+| Node | ≥ 20.9 | `node --version` |
+| npm | any recent | `npm --version` |
+
+### Set up once
+
+```powershell
+cd frontend
+npm install
+Copy-Item .env.example .env.local
+```
+
+The LangGraph dev server is in the `ui` dependency group. `uv run --group ui` installs it on first use; a plain
+`uv sync`, and CI, leave it out.
+
+### Run
+
+Two terminals.
+
+```powershell
+# 1 — from the project root: the chat graph, on http://localhost:2024
+uv run --group ui langgraph dev --no-browser
+
+# 2 — from frontend/: the UI, on http://localhost:3000
+npm run dev
+```
+
+Open <http://localhost:3000> and send any message. The reply is
+*"The review chat is connected. Reviewing from the chat is not wired yet."*
+
+The server loads the root `.env` (named in `langgraph.json`). The wire check needs no provider key.
+
+### Settings
+
+`frontend/.env.local`, copied from `frontend/.env.example`:
+
+| Variable | Value | Meaning |
+|---|---|---|
+| `LANGGRAPH_API_URL` | `http://localhost:2024` | Where the proxy forwards to. Read on the server only |
+| `NEXT_PUBLIC_LANGGRAPH_ASSISTANT_ID` | `review_chat` | The graph to talk to. Must match a key under `graphs` in `langgraph.json` |
+| `LANGCHAIN_API_KEY` | blank | Forwarded as `x-api-key`. Not needed for the local server |
+
+### Verify
+
+```powershell
+uv run pytest tests/unit/agents/test_chat_agent.py   # the graph, and that langgraph.json names it
+npm test                                             # in frontend/: the proxy route
+npx tsc --noEmit                                     # in frontend/: type-check
+```
+
+### If something goes wrong
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| `uv trampoline failed to canonicalize script path` | A uv launcher problem seen on Windows | `uv run --group ui python -m langgraph_cli dev --no-browser` |
+| The UI shows an error as soon as a message is sent | The LangGraph server is not running, or `LANGGRAPH_API_URL` points elsewhere | Start terminal 1; check `frontend/.env.local` |
+| `LANGGRAPH_API_URL is not configured.` | `frontend/.env.local` is missing | Copy it from `.env.example` and restart `npm run dev` |
+| Port 3000 is taken | Something else is listening, for example a self-hosted Langfuse | `npm run dev -- --port 3001` |

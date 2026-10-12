@@ -29,6 +29,9 @@ dev = [
     "jsonschema",
     "ipykernel",
 ]
+ui = [
+    "langgraph-cli[inmem]>=0.4.33",
+]
 
 [build-system]
 requires = ["hatchling"]
