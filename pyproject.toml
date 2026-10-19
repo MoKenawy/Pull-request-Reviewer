@@ -17,6 +17,7 @@ dependencies = [
     "langchain>=1.4.1",
     "groq>=1.7.0",
     "langfuse>=4.15.5",
+    "jinja2>=3.1",
 ]
 
 [project.scripts]
@@ -41,7 +42,8 @@ packages = ["src/agentic_review"]
 testpaths = ["tests"]
 addopts = "-p no:cacheprovider"
 
-# Structural contracts (technical_stack.md §4, research R-20). Contracts 4 and 5 arrive with feature 004.
+# Structural contracts (technical_stack.md §4, research R-20). Contracts 4 and 5 arrive with feature 004;
+# 7 is reserved for Langfuse (T103). The numbers are names, not an ordering.
 [tool.importlinter]
 root_package = "agentic_review"
 include_external_packages = true
@@ -108,3 +110,22 @@ layers = [
     "agentic_review.core.changeset",
     "agentic_review.core.findings | agentic_review.core.config",
 ]
+
+# Jinja2 is CF-7's templating engine and belongs to the HTML renderer alone (SRS FR-10.4d, AC-10,
+# technical_stack.md §4). Same shape as contract 1 for Rich: a rendering dependency never reaches a
+# capability. `cli` is a source module on purpose -- it calls render_html and never templates anything itself.
+[[tool.importlinter.contracts]]
+name = "8 - only core.output may import Jinja2"
+type = "forbidden"
+source_modules = [
+    "agentic_review.cli",
+    "agentic_review.agents",
+    "agentic_review.core.pipeline",
+    "agentic_review.core.changeset",
+    "agentic_review.core.assembly",
+    "agentic_review.core.findings",
+    "agentic_review.core.review",
+    "agentic_review.core.config",
+]
+forbidden_modules = ["jinja2", "markupsafe"]
+allow_indirect_imports = true

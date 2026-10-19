@@ -66,6 +66,7 @@ flowchart TD
 | Packaging | **PyPI wheel**, console entry point, `uv tool install` / `pipx` | FR-9.1, FR-10.6 |
 | CLI | **Typer** (over Click) | FR-10.1, FR-10.3a |
 | Terminal rendering | **Rich** — confined to CF-7 | FR-10.4a, AC-10 |
+| HTML rendering | **Jinja2** — confined to `core/output/` | FR-10.4d |
 | Finding model | **Pydantic v2** | FR-0.1, FR-0.4, FR-5.6a |
 | Config | **PyYAML** + a Pydantic settings model | FR-1.2a–d |
 | Parsing | **`tree-sitter`** bindings + **`tree-sitter-typescript`** grammar | FR-2.2 |
@@ -83,7 +84,9 @@ flowchart TD
 
 ### 3.1 Packaging and distribution
 
-A PyPI package with a console entry point, installed with `uv tool install` or `pipx`. The wheel carries three kinds of content: Python source, the native `tree-sitter` grammar binding, and the built resolver bundle as package data.
+A PyPI package with a console entry point, installed with `uv tool install` or `pipx`. The wheel carries four kinds of content: Python source, the native `tree-sitter` grammar binding, the HTML report template, and the built resolver bundle as package data.
+
+The template is the wheel's **first** package-data file, so it sets the precedent the resolver bundle follows: shipped under `src/agentic_review/`, and read at runtime through `importlib.resources` — never by path arithmetic from `__file__`, which breaks in a zipped distribution.
 
 The adoption cost is recorded honestly as **R-8** in the specification: the target user is a TypeScript developer who has Node and may not have Python. That is accepted for v1, whose users are the people building the system. Standalone binaries and a container image are v2 work under FR-10.6, and the reasoning for not doing either now is in ADR-0007.
 
@@ -161,7 +164,9 @@ The caveat, restated from [`Draft/agent-harness-design.md`](./Draft/agent-harnes
 
 ### 3.7 CF-7 — output
 
-Typer for the command surface, Rich for rendering. Rich is the dependency AC-10 names: no module outside CF-7 may import it, which keeps every renderer downstream of the finding model rather than beside it.
+Typer for the command surface, Rich for terminal rendering, Jinja2 for the HTML rendering (FR-10.4d). Rich is the dependency AC-10 names: no module outside CF-7 may import it, which keeps every renderer downstream of the finding model rather than beside it. Jinja2 is confined the same way, by contract 8, and for the same reason.
+
+The HTML rendering escapes everything by default and carries no script and no network reference. A finding's rationale is prose a model wrote about a repository nobody vouched for, and a browser is the one surface where such text is executed rather than shown.
 
 Machine-readable output is the Pydantic model serialised directly (FR-8.2a), so the terminal and the JSON cannot disagree about what was found.
 
@@ -201,6 +206,7 @@ src/agentic_review/
         findings/     CF-5 · Pydantic models, schema, versioning, the model port
         review/       CF-6 · call and token accounting — the framework-free half
         output/       CF-7 · verdict, renderers, JSON serialisation
+            templates/ CF-7 · the HTML report template — package data, read via importlib.resources
         patterns/     CF-8 · rule library
         config/       CF-9 · settings model, diagnostics
     _vendor/
@@ -231,7 +237,7 @@ The CF → module mapping is maintained in [`design/01-logical-architecture.md`]
 
 ### The structural contracts
 
-**Six** import-linter contracts, cheap enough to run on every commit. *Revised 2026-09-14: SRS v1.1 extended AC-10 to cover FR-2.6e, and the design phase added two more that no criterion names but the layering needs.*
+**Seven** import-linter contracts, cheap enough to run on every commit. *Revised 2026-09-14: SRS v1.1 extended AC-10 to cover FR-2.6e, and the design phase added two more that no criterion names but the layering needs.*
 
 | # | Contract | Enforces | Named by AC-10? |
 |---|---|---|---|
@@ -242,10 +248,13 @@ The CF → module mapping is maintained in [`design/01-logical-architecture.md`]
 | 4 | Only `core/context/resolver/` may reference the resolver bundle path | FR-2.6f | ✅ *(added in v1.1)* |
 | 5 | **No module outside `core/context/` may name a concrete related-context implementation** — construction goes through the factory | **FR-2.6e** | ✅ *(added in v1.1)* |
 | 6 | Nothing imports `cli/`; the capability packages do not import each other | The layering in [`design/01-logical-architecture.md`](./design/01-logical-architecture.md) §3 | ❌ |
+| 8 | Only `core/output/` may import Jinja2 | FR-10.4d | ✅ *(added in v1 with FR-10.4d)* |
 
 Contract 5 is the one worth insisting on. The specification calls FR-2.6e *"the highest-value structural constraint in this document"*, and until v1.1 it was the only structural claim with **no test behind it** — AC-10 cited it without checking it. A grep for a class name is a cheap thing to be right about.
 
 Contract 6 has no acceptance criterion because it defends a design decision rather than a requirement: capabilities that call each other cannot be tested alone, and an adapter that anything imports has stopped being an adapter.
+
+There is no contract 7: the number is reserved for the Langfuse confinement named by spec 001 T103, which is not yet built. The numbers are names, not an ordering — skipping one costs nothing, and renumbering a contract that CI reports by name costs a confused bisect.
 
 ---
 
@@ -257,6 +266,7 @@ Contract 6 has no acceptance criterion because it defends a design decision rath
 | `langchain` / `langgraph` | Provider interface, review-step control flow | Contained to CF-6 by FR-5.8. That is the point of FR-5.8 |
 | `tree-sitter`, `tree-sitter-typescript` | Parsing | High cost — FR-2.2 names it, and the depth ladder is built on it |
 | `typer`, `rich` | CLI and rendering | Low cost — confined to CF-7 |
+| `jinja2` | The HTML report template (CF-7) | Low cost — one template, confined to `core/output/` by contract 8 |
 | `pyyaml` | Config parsing | Low cost |
 | `pytest` | Regression harness | Low cost |
 | `import-linter` | Structural checks (AC-10) | Low cost — dev-only |
@@ -291,6 +301,8 @@ Pinned by the first install in feature 001 (walking skeleton), resolved on 2026-
 | `pyyaml` | 6.0.3 | Config parsing |
 | `typer` | 0.27.2 | CLI (with `click` 8.5.0) |
 | `rich` | 15.0.0 | Terminal rendering |
+| `jinja2` | 3.1.6 | The HTML report template (CF-7 only, contract 8) |
+| `markupsafe` | 3.0.3 | Transitive; the escaping primitive `autoescape` uses |
 | `langchain-core` | 1.6.3 | Tool binding, messages |
 | `langchain-openai` | 1.6.2 | OpenAI-compatible provider client |
 | `langgraph` | 1.2.11 | Review-step graph (CF-6 only) |

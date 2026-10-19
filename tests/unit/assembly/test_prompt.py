@@ -4,9 +4,20 @@ from __future__ import annotations
 
 import math
 from pathlib import Path
+from types import SimpleNamespace
+from typing import Any
+
+import pytest
 
 from agentic_review.core.assembly.budget import estimate_tokens
-from agentic_review.core.assembly.prompt import MATERIAL_STATEMENT, assemble, prompt_text
+from agentic_review.core.assembly.prompt import (
+    INSTRUCTIONS,
+    MATERIAL_STATEMENT,
+    SYSTEM_PROMPT_NAME,
+    assemble,
+    load_instructions,
+    prompt_text,
+)
 from agentic_review.core.changeset.model import ChangedFile, ChangeSet, Hunk
 from agentic_review.core.config.settings import BudgetSettings
 from agentic_review.core.findings.port import ReviewContext, ReviewedFile
@@ -65,8 +76,14 @@ def test_material_statement() -> None:
 
 def test_instructions_name_the_only_way_to_report() -> None:
     instructions = _assemble().instructions
-    for phrase in ("emit_finding", "blocking", "important", "nit", "error-handling", "unverified", "no tool call"):
+    for phrase in ("emit_finding", "one turn", "no tool call"):
         assert phrase in instructions
+
+
+def test_instructions_leave_the_field_rules_to_the_tool() -> None:
+    # Severity, evidence kinds and the example travel with the bound tool (tests/unit/agents/test_binding.py).
+    for phrase in ("# Severity", "# Filling in the fields", "unverified", "hunkIndex"):
+        assert phrase not in INSTRUCTIONS
 
 
 def test_run_material() -> None:
@@ -82,3 +99,60 @@ def test_estimate_covers_the_whole_prompt() -> None:
     context = _assemble()
     text = prompt_text(context.instructions, context.material_statement, context.diff_section)
     assert context.estimated_tokens == estimate_tokens(text) == math.ceil(len(text) / 3)
+
+
+LANGFUSE_ENV = {"LANGFUSE_PUBLIC_KEY": "pk-lf-test", "LANGFUSE_SECRET_KEY": "sk-lf-test"}
+
+
+class _FakeLangfuse:
+    """Stands in for ``langfuse.Langfuse``: returns ``prompt`` from ``get_prompt`` and records what was asked."""
+
+    prompt: Any = None
+    requested: list[str] = []
+
+    def __init__(self, **_kwargs: object) -> None:
+        pass
+
+    def get_prompt(self, name: str, **_kwargs: object) -> SimpleNamespace:
+        self.requested.append(name)
+        return SimpleNamespace(prompt=self.prompt, version=7)
+
+
+@pytest.fixture
+def fake_langfuse(monkeypatch: pytest.MonkeyPatch) -> type[_FakeLangfuse]:
+    _FakeLangfuse.requested = []
+    monkeypatch.setattr("langfuse.Langfuse", _FakeLangfuse)
+    return _FakeLangfuse
+
+
+def test_without_langfuse_credentials_the_built_in_prompt_is_used() -> None:
+    loaded = load_instructions({})
+    assert (loaded.text, loaded.source, loaded.problem) == (INSTRUCTIONS, "built-in", None)
+    assert _assemble().instructions == INSTRUCTIONS
+
+
+def test_the_langfuse_system_message_is_used(fake_langfuse: type[_FakeLangfuse]) -> None:
+    fake_langfuse.prompt = [{"role": "system", "content": "Review it. Use \\\nemit_finding."}]
+    loaded = load_instructions(LANGFUSE_ENV)
+    assert fake_langfuse.requested == [SYSTEM_PROMPT_NAME]
+    assert loaded.text == "Review it. Use emit_finding."  # the copied line continuations are joined
+    assert loaded.source == f"langfuse:{SYSTEM_PROMPT_NAME}@v7" and loaded.problem is None
+
+
+def test_a_failed_fetch_falls_back_to_the_built_in_prompt() -> None:
+    # The suite blocks the network, so the real client's fetch fails: the review must still get a prompt.
+    loaded = load_instructions(LANGFUSE_ENV)
+    assert loaded.text == INSTRUCTIONS and loaded.source == "built-in" and loaded.problem
+
+
+def test_a_prompt_without_a_system_message_falls_back(fake_langfuse: type[_FakeLangfuse]) -> None:
+    fake_langfuse.prompt = [{"role": "user", "content": "hello"}]
+    loaded = load_instructions(LANGFUSE_ENV)
+    assert loaded.text == INSTRUCTIONS and "no system message" in (loaded.problem or "")
+
+
+def test_explicit_instructions_override_the_loaded_prompt() -> None:
+    context = assemble(CHANGE_SET, {"src/app.ts": 40, "lib/new.js": 31}, BudgetSettings(), "Only this.")
+    assert context.instructions == "Only this."
+    text = prompt_text(context.instructions, context.material_statement, context.diff_section)
+    assert context.estimated_tokens == estimate_tokens(text)

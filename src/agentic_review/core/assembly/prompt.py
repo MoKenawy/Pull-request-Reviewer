@@ -2,16 +2,25 @@
 
 **The wording below is unmeasured.** Prompt quality is judged only once feature 003's regression corpus exists
 (SRS Appendix A, Principle VI): until then, no claim that one wording reviews better than another has evidence
-behind it. What the structure does have a reason for is the shape the model must produce — the emit-finding
-protocol, the line-number rule, the vocabularies and the stop condition — because a reply that ignores those is
-rejected at the call boundary rather than turned into a finding.
+behind it. What the structure does have a reason for is the shape the model must produce, because a reply that
+ignores it is rejected at the call boundary rather than turned into a finding. The prompt carries only the
+one-turn protocol and the stop condition. How to fill in a call — the line-number rule, the severity and category
+vocabularies, the evidence kinds, an example — travels with the bound ``emit_finding`` tool itself: its description
+is ``TOOL_DESCRIPTION`` and each argument's rules are its schema description on ``FindingDraft``.
+
+**Where the system prompt comes from.** When Langfuse credentials are in the environment, the system prompt is the
+Langfuse-managed prompt ``pr-agent-system-prompt`` (its ``production`` label), so the wording can be iterated on
+without a release. ``INSTRUCTIONS`` below is the fallback: it is used when Langfuse is not configured, and when the
+fetch fails for any reason. A missing or unreachable prompt store never fails a review (FR-11.2 in spirit).
 """
 
 from __future__ import annotations
 
+import os
 from collections.abc import Mapping
+from dataclasses import dataclass
 
-from agentic_review.core.assembly.budget import estimate_tokens
+from agentic_review.core.assembly.budget import BudgetExhausted, estimate_tokens
 from agentic_review.core.changeset.model import ChangedFile, ChangeSet
 from agentic_review.core.config.settings import BudgetSettings
 from agentic_review.core.findings.port import ReviewContext, ReviewedFile, RunMaterial
@@ -22,15 +31,14 @@ of every file under review, and nothing else: no test results, no other files, n
 
 # How to report
 
-You get exactly one turn: there is no later turn in which to report more problems. If you find multiple problems, \
-invoke `emit_finding` multiple times **within this same turn** — one call per problem, all issued together \
-alongside each other, not one now while you wait for a result before issuing the next. For example, three problems \
-means three `emit_finding` calls emitted together in this one turn, never spread across turns and never issued one \
-at a time waiting on a response in between. A tool call is the only thing that is recorded. Any prose you write is \
+Report every problem with the `emit_finding` tool. You get exactly one turn: there is no later turn in which to \
+report more problems. If you find multiple problems, invoke `emit_finding` multiple times **within this same turn** \
+— one call per problem, all issued together, not one now while you wait for a result before issuing the next. For \
+example, three problems means three `emit_finding` calls emitted together in this one turn. Any prose you write is \
 discarded unread, so never describe a problem in text instead of calling the tool.
 
-In this single turn, emit one `emit_finding` call for every problem you find. Only after every finding has been \
-emitted — or if you found nothing worth reporting — reply with your final text message and no tool call.
+Only after every finding has been emitted — or if you found nothing worth reporting — reply with your final text \
+message and no tool call.
 
 # What to report
 
@@ -52,49 +60,62 @@ authorisation or validation step.
 7. `maintainability` — dead code, a computed value never used, a misleading name, logic duplicated from nearby code.
 
 Do not report: formatting or style, preferences with no consequence you can state, code the change did not touch, \
-or praise. Do not restate what the diff does. Report each problem once, in one call, at its root cause rather than \
-at each symptom.
-
-# Severity
-
-- `blocking` — likely to break behaviour, lose data, or open a vulnerability. A reviewer would not merge it.
-- `important` — a real defect or risk to fix, but not on its own a reason to block the merge.
-- `nit` — minor and local; the author may reasonably ignore it.
-
-When you are unsure between two severities, choose the lower one.
-
-# Filling in the fields
-
-- `file`: exactly one of the reviewed paths, copied from the file header in the diff.
-- `startLine` / `endLine`: line numbers in the **new** version of that file. Each hunk is labelled `[hunk i]` and \
-carries its `@@ -old,count +new,count @@` header: the `+` number is the line number of the hunk's first line. Count \
-added (`+`) and context (` `) lines from there; removed (`-`) lines do not exist in the new file and are not counted. \
-Give the smallest range that shows the problem.
-- `rationale`: one or two sentences naming the symbol involved, what is wrong, and what it causes. A short \
-suggested fix is welcome, but the consequence matters more.
-- `evidence`: required, and one of:
-  - `{"kind": "diff", "file": "<reviewed path>", "hunkIndex": <i>}` — the usual case: the labelled hunk you are \
-citing shows the problem.
-  - `{"kind": "unverified", "reason": "<what you could not check here>"}` — when you are inferring beyond what the \
-diff shows, for example about a caller you cannot see.
-- No checks were run and no related context was gathered in this review, so evidence of kind `check` or `context` \
-is rejected. Never set `ruleId`; no rules are loaded.
-
-Each call is validated independently against this change, regardless of how many other calls you make in the same \
-turn. A call naming a file that was not reviewed, a line past the end of that file, or evidence this review does \
-not have is rejected and records nothing — that rejection does not affect your other calls.
-
-# Example of a good call
-
-```json
-{"file": "src/session.ts", "startLine": 42, "endLine": 47, "severity": "blocking", "category": "error-handling",
- "rationale": "The expired-token branch returns before releaseLock() runs, so the session lock is never released and \
-later requests for the same session block forever.",
- "evidence": {"kind": "diff", "file": "src/session.ts", "hunkIndex": 1}}
-```
+or praise. Do not restate what the diff does. Report each problem once.
 """
 
 MATERIAL_STATEMENT = "No checks were run. No related context was gathered."
+
+SYSTEM_PROMPT_NAME = "pr-agent-system-prompt"
+"""The Langfuse-managed system prompt. A chat prompt whose system message is the instructions."""
+
+_PROMPT_FETCH_TIMEOUT_SECONDS = 5
+
+
+@dataclass(frozen=True)
+class Instructions:
+    """The system prompt a review uses, and where it came from."""
+
+    text: str
+    source: str
+    """``langfuse:<name>@v<version>``, or ``built-in``."""
+    problem: str | None = None
+    """Why the built-in prompt was used although Langfuse is configured; ``None`` otherwise."""
+
+
+def load_instructions(env: Mapping[str, str], *, name: str = SYSTEM_PROMPT_NAME) -> Instructions:
+    """The Langfuse prompt ``name`` when Langfuse is configured in ``env``, else ``INSTRUCTIONS``. Never raises."""
+    public_key, secret_key = env.get("LANGFUSE_PUBLIC_KEY"), env.get("LANGFUSE_SECRET_KEY")
+    if not public_key or not secret_key:
+        return Instructions(INSTRUCTIONS, "built-in")
+    try:
+        from langfuse import Langfuse  # imported only when configured: a review without Langfuse never loads it
+
+        client = Langfuse(
+            public_key=public_key,
+            secret_key=secret_key,
+            base_url=env.get("LANGFUSE_BASE_URL") or env.get("LANGFUSE_HOST"),
+            tracing_enabled=False,  # this client only reads prompts; tracing is attached separately
+        )
+        prompt = client.get_prompt(
+            name, type="chat", max_retries=1, fetch_timeout_seconds=_PROMPT_FETCH_TIMEOUT_SECONDS
+        )
+        text = _system_text(prompt.prompt)
+    except Exception as error:  # any failure falls back: the prompt store is optional
+        return Instructions(INSTRUCTIONS, "built-in", problem=f"{type(error).__name__}: {error}")
+    return Instructions(text, f"langfuse:{name}@v{prompt.version}")
+
+
+def _system_text(prompt: object) -> str:
+    if isinstance(prompt, str):
+        text = prompt
+    else:
+        assert isinstance(prompt, list)
+        text = "\n\n".join(m["content"] for m in prompt if m.get("role") == "system" and m.get("content"))
+    if not text.strip():
+        raise ValueError("the prompt has no system message")
+    # The stored text was copied from this module's source, so its ``\``-newline line continuations came with it;
+    # join them the way Python would have, so the model sees the same text as INSTRUCTIONS.
+    return text.replace("\\\n", "")
 
 
 def prompt_text(instructions: str, material_statement: str, diff_section: str) -> str:
@@ -123,8 +144,23 @@ def _diff_section(change_set: ChangeSet) -> str:
     return "\n\n".join(blocks)
 
 
-def assemble(change_set: ChangeSet, line_counts: Mapping[str, int], budget: BudgetSettings) -> ReviewContext:
+def assemble(
+    change_set: ChangeSet,
+    line_counts: Mapping[str, int],
+    budget: BudgetSettings,
+    instructions: str | None = None,
+) -> ReviewContext | BudgetExhausted:
+    """``instructions`` overrides the system prompt; by default it is loaded as ``load_instructions`` describes.
+
+    The whole prompt, or ``BudgetExhausted`` when its estimate exceeds ``budget.maxTokens`` — never a part of it
+    (FR-2.5b, FR-11.2).
+    """
+    if instructions is None:
+        instructions = load_instructions(os.environ).text
     diff_section = _diff_section(change_set)
+    estimated = estimate_tokens(prompt_text(instructions, MATERIAL_STATEMENT, diff_section))
+    if estimated > budget.max_tokens:
+        return BudgetExhausted(estimated_tokens=estimated, limit=budget.max_tokens)
     material = RunMaterial(
         reviewed_files={
             f.path: ReviewedFile(line_count=line_counts[f.path], hunk_count=len(f.hunks))
@@ -132,9 +168,9 @@ def assemble(change_set: ChangeSet, line_counts: Mapping[str, int], budget: Budg
         }
     )
     return ReviewContext(
-        instructions=INSTRUCTIONS,
+        instructions=instructions,
         material_statement=MATERIAL_STATEMENT,
         diff_section=diff_section,
-        estimated_tokens=estimate_tokens(prompt_text(INSTRUCTIONS, MATERIAL_STATEMENT, diff_section)),
+        estimated_tokens=estimated,
         material=material,
     )

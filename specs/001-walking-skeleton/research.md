@@ -68,21 +68,39 @@ Nothing here adds or relaxes a requirement. Where the documents are silent, the 
   |---|---|---|
   | `working-tree` (default) | `HEAD` ↔ working tree (`git diff HEAD`), **plus untracked files not ignored** (`git ls-files --others --exclude-standard`), each treated as `added` | "Uncommitted changes" includes a new file the developer has not `git add`-ed yet |
   | `staged` | `HEAD` ↔ index (`git diff --cached`) | |
-  | `range` | merge-base(`base`, `HEAD`) ↔ `HEAD` (`git diff base...HEAD`) | "What this branch changed since it left `base`" — the same comparison a PR makes, which is the seam v3 substitutes (FR-10.3c) |
+  | `range` | merge-base(`base`, `head`) ↔ `head` (`git diff base...head`); `head` is `HEAD` unless `--head` names another ref *(nameable since 2026-10-09, SRS v1.5)* | "What this branch changed since it left `base`" — the same comparison a PR makes, which is the seam v3 substitutes (FR-10.3c). Naming the head lets a branch be reviewed without checking it out |
+  | `pull-request` *(added 2026-10-09, SRS v1.5)* | merge-base(base branch, `refs/pull/<n>/head`) ↔ `refs/pull/<n>/head`, in a temporary clone | The `range` comparison, run on a repository fetched for the purpose. Selected by `--pr URL`. See [R-25](#r-25--reading-a-pull-request-added-2026-10-09-srs-v15-adr-0011) |
+  | `commit` *(added 2026-10-09, SRS v1.4)* | first parent of `REF` ↔ `REF` (`git diff REF^1 REF`); git's empty tree ↔ `REF` when `REF` is a root commit | "What this one commit introduced." Selected by `--commit REF`. The working tree and the index play no part: uncommitted edits are not reviewed, and no untracked file is read |
 
   An **unborn `HEAD`** (a repository with no commits) compares against git's empty tree for
   `working-tree` and `staged`; `range` against an unborn `HEAD` is a preflight failure naming the problem.
-  `ResolvedScope` records `base_ref` as given and `head_ref = "HEAD"`. The one-line description
-  carries the abbreviated commit IDs they resolved to.
-- **Rationale**: FR-10.3a names the three scopes but not their git semantics. Excluding untracked files
+  `ResolvedScope` records `base_ref` as given and `head_ref` as given, or `"HEAD"`. The one-line description
+  carries the abbreviated commit IDs they resolved to. A base and a head with no common history have no
+  three-dot diff, so that too is a preflight failure.
+
+  For **`commit`**: `REF` is anything that resolves to a commit (`REF^{commit}` — an ID, a branch, a tag,
+  `HEAD~2`); one that does not is a preflight failure naming the ref, which also covers a repository
+  with no commits. A **merge commit** is compared with its first parent, and the description says so.
+  `ResolvedScope` records `head_ref` as given and leaves `base_ref` empty, because the user named no
+  base; the description carries the abbreviated IDs of the commit and of the parent it was compared with.
+- **Rationale**: FR-10.3a names the scopes but not their git semantics. Excluding untracked files
   would silently skip the most common new-file case. The spec's Story 1 is "edited some files and has not
   committed", and silence is what Principle V forbids. Two-dot (`base..HEAD`) would pull in unrelated
   commits merged to `base` after the branch point and review them as the developer's work.
 - **Design gap**: `Docs/design/02-domain-model.md` §3.1 defines the scopes' names, not their
-  comparisons. **D-7** in the plan.
+  comparisons. **D-7** in the plan; **D-11** for the `commit` scope; **D-13** for the `pull-request` scope.
 - **Alternatives**: `git diff` without `HEAD`, which reviews only unstaged edits and so contradicts "uncommitted".
   Leaving untracked files out, and listing them as "not reviewed", which is honest but wrong for the default
-  user. Two-dot range, rejected above.
+  user. Two-dot range, rejected above. For a single commit: expressing it as a `range` whose base is
+  `REF^` and whose head is `REF` (no new scope kind, but the report would call one commit a range, and
+  `head_ref` would stop being always `HEAD`); refusing merge commits (a preflight failure for
+  something git can answer); a combined diff against every parent (not a files-and-hunks change set).
+- **Checks and the working tree (D-12)**: checks and parsing read the working tree. Under `commit` the
+  working tree need not hold the reviewed version, and the same is already true of `staged` and of a
+  `range` with uncommitted edits. **Decided 2026-10-09 for `commit`: checks are not run** and are
+  recorded as skipped (SRS FR-4.8, built by 002). The other two scopes, and related context under
+  `commit`, are left to 002 and 004. Nothing in 001 reads the working tree for these scopes — line
+  counts come from the blobs (R-5) — so 001 is unaffected.
 
 ## R-5 · Reading the diff
 
@@ -102,7 +120,8 @@ Nothing here adds or relaxes a requirement. Where the documents are silent, the 
   separators, which satisfies the repo-relative-POSIX-path rule without conversion. Rename detection (`-M`) gives
   the spec's "reviewed under its new path; previous path recorded".
 - **Line counts** for FR-013's "line range must fall inside that file" come from the version under
-  review: the working-tree file, the index blob (`git show :path`), or the `HEAD` blob. They are exposed as
+  review: the working-tree file, the index blob (`git show :path`), the `HEAD` blob, or the named
+  commit's blob (`git show REF:path`). They are exposed as
   `measure_new_files(change_set) -> dict[path, int]` in `core/changeset/` rather than as a new
   `ChangeSet` field, because `ChangeSet` is frozen (FR-10.3c) and the v3 producer should not inherit an
   obligation the interface does not state.
@@ -256,8 +275,9 @@ Nothing here adds or relaxes a requirement. Where the documents are silent, the 
   2. **Reference** (spec FR-013, gap D-1): `file` must be a reviewed file; `1 ≤ startLine ≤ endLine
      ≤ line count`; `evidence.kind == "diff"` must name a reviewed file and, if `hunkIndex` is given, a hunk
      that exists; `evidence.kind in {"check", "context"}` → rejected ("no checks were run in this
-     review" / "no related context was gathered in this review"); `ruleId` present → rejected ("no
-     pattern rules are loaded in this review").
+     review" / "no related context was gathered in this review"); `ruleId` present → **discarded**, and the
+     finding accepted without it *(changed 2026-10-09 — it was a rejection, and cost a real finding its one
+     repair turn; see contracts/emit-finding.md "Discarded fields")*.
 
   LangChain's `AIMessage.invalid_tool_calls` (arguments that are not valid JSON) are counted as calls and
   rejected with reason `arguments: not valid JSON`. A call naming any tool other than `emit_finding` is
@@ -449,3 +469,49 @@ Nothing here adds or relaxes a requirement. Where the documents are silent, the 
   `AGENTIC_REVIEW_DEBUG=1`, after redaction.
 - **Rationale**: FR-10.4c fixes four outcomes, and a fifth exit code would change a stable contract. Exit 0 would
   let a crash read as a review, which Principle V forbids.
+
+## R-25 · Reading a pull request *(added 2026-10-09; SRS v1.5, ADR-0011)*
+
+- **Decision**: a pull request is read with git alone, into a temporary directory, and never checked out.
+
+  ```
+  git clone --filter=blob:none --no-checkout https://github.com/<owner>/<repo>.git <tmp>/repo
+  git fetch origin +refs/pull/<n>/head:refs/pull/<n>/head
+  git diff <base>...refs/pull/<n>/head          # the same three-dot diff as the range scope (R-4)
+  ```
+
+  | Question | Answer |
+  |---|---|
+  | How is the pull request named? | By URL: `https://github.com/<owner>/<repo>/pull/<n>`, with anything GitHub appends after it. Nothing else is accepted — the string becomes a git argument, so it is matched strictly, not parsed loosely |
+  | Where does its head come from? | `refs/pull/<n>/head`, which GitHub publishes for every pull request, including those opened from forks. No branch name is needed |
+  | What is the base? | The repository's default branch (`refs/remotes/origin/HEAD`), unless `--base` names another. **git cannot know which branch a pull request targets**; the scope line says which base was used and whether it was the default |
+  | What is downloaded? | Commits and trees (`--filter=blob:none`). File contents are fetched only for the files the diff touches, when the diff asks for them |
+  | What is written to disk? | Only `.git`. `--no-checkout` means no working tree: no project file exists as a file, so nothing can be run, no hook fires and nothing is installed (SRS FR-10.3d) |
+  | Where does configuration come from? | `--config PATH`, or the defaults. Never from the pull request, and never from the directory the command was run in (SRS FR-10.3d) |
+  | Can git ask for a login? | No. `-c credential.helper= -c core.askPass=`, `GIT_TERMINAL_PROMPT=0`, `GCM_INTERACTIVE=never`, and `GIT_ASKPASS`/`SSH_ASKPASS` removed. GitHub answers a missing repository with a login challenge; without this, a mistyped URL hangs at a prompt |
+  | What if it cannot be read? | A preflight failure (exit 3) naming the URL, the pull request number or the base. It is check 5, the last, so a missing credential never costs a clone |
+  | What happens to the clone? | Removed when the run ends, in a `finally`. git marks pack files read-only, which Windows will not delete as they are; removal makes them writable first |
+  | How long may it take? | One clone or fetch is bounded by a timeout — **a placeholder**, labelled as one in the code. No decision rests on its value |
+
+- **The seam**: all of this is behind `PullRequestSource` ([contracts/internal-seams.md](./contracts/internal-seams.md) §2a).
+  Preflight, the pipeline and the CLI see a `ChangeSet` and line counts, and nothing that would reveal how they
+  were obtained.
+- **Interim, by decision.** This reader is hand-written plumbing for something the official GitHub MCP server
+  (`github/github-mcp-server`) already provides. It is to be replaced by a `PullRequestSource` backed by that
+  server — a second implementation, not a rewrite. That is **not** built here and needs its own ADR, because it
+  brings a GitHub token (an exception to FR-10.1, and a second credential under FR-1.3a), an MCP client that may
+  not live under `core/` (FR-5.8) and must be named in `technical_stack.md`, and reach into private repositories.
+  Until then this module stays thin: no feature the MCP server already has.
+- **Rationale**: it needs nothing the tool does not already require — git — and it cannot execute the pull
+  request, which is the exposure ADR-0003 exists for. Three-dot semantics come for free from R-4.
+- **Tests stay offline** (SC-006): a fixture repository served over `file://`, with `uploadpack.allowFilter` set
+  and a `refs/pull/7/head` ref, lets the real clone, fetch and lazy blob fetch run with no socket. The pull
+  request's commits exist only under that ref, as for a fork.
+- **One observation, not a target** (Principle VI): on 2026-10-09 a five-file pull request in a small public
+  TypeScript repository was opened, diffed and measured in about four seconds on the maintainer's machine. No
+  decision here depends on that figure.
+- **Alternatives**: the GitHub REST API (knows the true base, but needs a token to be usable, and puts a GitHub
+  client in the dependency list — ADR-0011 option B); the `gh` CLI (a second prerequisite, and a logged-in one);
+  downloading the pull request's `.diff` over HTTPS (no line counts for validation, and an HTTP client in
+  `core/changeset/`); a shallow clone (`--depth`) (no merge base, so no three-dot diff); a full clone (downloads
+  every version of every file to read a handful).

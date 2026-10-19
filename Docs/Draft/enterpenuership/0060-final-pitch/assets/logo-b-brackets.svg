@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 120" width="600" height="120" role="img" aria-label="Agentic Code Review logo, prototype B: a check mark between two code brackets">
+  <title>Agentic Code Review — prototype B, "checked code"</title>
+  <rect x="2" y="2" width="116" height="116" rx="22" fill="#15181d" stroke="#5cc28e" stroke-width="4"/>
+  <path d="M38 32 L18 60 L38 88" fill="none" stroke="#f4f2ec" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M82 32 L102 60 L82 88" fill="none" stroke="#f4f2ec" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M46 61 l10 11 l18 -23" fill="none" stroke="#5cc28e" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="148" y="75" font-family="'IBM Plex Sans', Arial, sans-serif" font-size="44" font-weight="600" fill="#15181d">Agentic Code Review</text>
+</svg>

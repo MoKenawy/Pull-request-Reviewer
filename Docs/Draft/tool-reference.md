@@ -12,7 +12,7 @@ All facts were gathered from the tools' own sites and repositories in September 
 
 **How it works / notable features.**
 - Repository-wide context as the central design idea, rather than line-local feedback.
-- A "TREX" runtime-validation capability (in beta) alongside standard reviews.
+- A "TREX" runtime-validation capability (in beta) alongside standard reviews. *Re-read 2026-10-10:* the changelog entry of 2026-06-15 says it "writes and runs targeted tests in a sandbox" against "the services, dependencies, and framework your repo already uses", and "attaches logs, screenshots, traces, scripts, or videos when something fails."
 - Custom rules, external-app connections, a CLI, and a knowledge base.
 - Self-hosting is available on the Enterprise tier.
 
@@ -36,6 +36,7 @@ All facts were gathered from the tools' own sites and repositories in September 
 - **Change Stack** — Code-explainability layer for large diffs, including semantic diffs, blast-radius context, and architectural diagrams.
 - **Security** — Continuous monitoring, per-PR security review, dependency-vulnerability detection, and finding verification to reduce false positives.
 - **Context engine** — A deterministic "codegraph," adaptive learning of team conventions ("Learnings"), business context from PRDs/issues, and an ensemble of models and tools.
+- **Verification** *(added 2026-10-10)* — The vendor's blog of 2025-07-17 says it "runs verification scripts on the review comments provided by the LLMs", that these "are generated in the sandbox", and that "any low value feedback is automatically filtered out and not passed on to the user". Its tools documentation says 50+ linters and scanners "run automatically in secure sandboxed environments".
 - Also offers IDE reviews, CLI reviews, a Slack agent, and a cloud coding agent.
 
 **Pricing (snapshot, billed annually).**
@@ -65,7 +66,7 @@ All facts were gathered from the tools' own sites and repositories in September 
 - Uses a credit-based system; specific tiers are on the pricing page (not enumerated here). Free for open-source projects.
 - Security posture emphasized: zero data retention (code analyzed and discarded), SOC 2 Type II, on-premises and single-tenant deployment options.
 
-**Model.** Hosted platform with enterprise/self-host options; open-source lineage in the PR-review component (PR-Agent).
+**Model.** Hosted platform with enterprise/self-host options; open-source lineage in the PR-review component (PR-Agent). *Re-read 2026-10-10:* the PR-Agent repository is MIT-licensed and describes itself as "a community-maintained legacy project of Qodo"; "Qodo has donated PR-Agent to the open-source community." Qodo's code-review documentation says "a judge agent merges their findings, removes duplicates, and filters out anything low-confidence", and does not say that it runs tests or executes code.
 
 ---
 
@@ -75,7 +76,7 @@ All facts were gathered from the tools' own sites and repositories in September 
 
 **How it works / notable features.**
 - Multiple agents analyze the diff and surrounding code in parallel; a **verification step checks candidate findings against actual code behavior** to filter false positives; results are deduplicated and ranked by severity.
-- Findings post as **inline comments** on the specific lines, with a summary in the review body and a collapsible extended-reasoning section.
+- Findings post as **inline comments** on the specific lines, with a summary in the review body and a collapsible extended-reasoning section. *Re-read 2026-10-10:* "Findings include a collapsed **Why this was flagged** section that you can expand to read why Claude flagged the issue and how it verified the problem."
 - **Severity levels**: Important (🔴), Nit (🟡), and Pre-existing (🟣).
 - **Non-blocking by design** — the check run always completes with a neutral conclusion, so it never blocks merges through branch protection.
 - A **machine-readable comment** on the last line of the check-run details can be parsed (with `gh` and `jq`) for per-severity counts.

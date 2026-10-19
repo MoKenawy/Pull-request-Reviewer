@@ -135,7 +135,7 @@ Sources: SRS §2.3.2 (out of scope for v1), §5 (NFR pass), Appendix A.
 | Additional languages | Support beyond TS/JS (new grammars, runners, pattern sets) | §2.3.2 | High |
 | Multi-provider routing & fallback | Provider chains and failover; a data-mapping task thanks to FR-0 | Appendix A | Medium |
 | Config-driven provider abstraction | Provider selection as user configuration rather than a build-time choice | §2.3.2 | Medium |
-| Hosted GitHub App | Webhooks, backend, persistent store — a different operating model | §2.3.2 | Very High |
+| Hosted GitHub App | Webhooks, backend, persistent store — a different operating model. *Since 2026-10-03 this is the closest catalogued item to the paid hosted review service of the open-core model ([canvas §5](./003-business-model-canvas.md)); it is still unversioned and unspecified* | §2.3.2 | Very High |
 | Web dashboard / analytics UI | Cross-PR trends, resolution rates, risk concentration | §2.3.2 | High |
 | Non-GitHub platforms | GitLab, Bitbucket support | §2.3.2 | High |
 | Multimodal / architectural-diagram analysis | Reason over or emit diagrams of architectural impact | §2.3.2 | High |

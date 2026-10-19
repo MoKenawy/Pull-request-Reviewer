@@ -9,13 +9,15 @@ The other side of this contract is **the user's repository**: a file written aga
 
 ## The file
 
-Read from the repository root, or from `--config PATH`. Every field is optional. The types, defaults and
+Read from the repository root, or from `--config PATH`. **For a `--pr` review it is read only from `--config PATH`**
+— never from the pull request, whose author could otherwise choose the provider URL the credential is sent to, and
+never from the current directory, which is not the repository under review (SRS FR-10.3d). Every field is optional. The types, defaults and
 per-field effect in 001 are in [data-model.md §7](../data-model.md#7--cf-9--configuration).
 
 ```yaml
 schemaVersion: 1
 
-scope: working-tree                  # working-tree | staged | range
+scope: working-tree                  # working-tree | staged | range (commit and pull-request are flags only)
 exclude:                             # ADDED to the default list below, never replacing it
   - "**/*.generated.ts"
 

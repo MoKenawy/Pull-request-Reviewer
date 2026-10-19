@@ -14,11 +14,18 @@ SCHEMA_VERSION = "1.0"
 TOOL_NAME = "emit_finding"
 TOOL_DESCRIPTION = (
     "Record ONE review finding: a single specific problem, at one location in one reviewed file. "
-    "Call this once per problem, as soon as you find it. This call is the only way a finding is recorded — prose in "
-    "your reply is discarded unread. Each call is validated against the change under review: the file must be one of "
+    "Call this once per problem, at its root cause rather than at each symptom; for several problems, make several "
+    "calls together in the same reply. This call is the only way a finding is recorded — prose in your reply is "
+    "discarded unread. Each call is validated on its own against the change under review: the file must be one of "
     "the reviewed files, the line range must exist in its new version, and the evidence must point at something this "
-    "review actually has. A rejected call records nothing."
+    "review actually has. A rejected call records nothing and does not affect your other calls.\n\n"
+    "Example arguments:\n"
+    '{"file": "src/session.ts", "startLine": 42, "endLine": 47, "severity": "blocking", "category": "error-handling", '
+    '"rationale": "The expired-token branch returns before releaseLock() runs, so the session lock is never released '
+    'and later requests for the same session block forever.", '
+    '"evidence": {"kind": "diff", "file": "src/session.ts", "hunkIndex": 1}}'
 )
+"""What the provider reads about the tool; each argument's own rules travel as its schema description (``FindingDraft``)."""
 
 REPORT_SCHEMA_ID = f"https://agentic-review.invalid/schemas/review-report/{SCHEMA_VERSION}.json"
 REPORT_SCHEMA_DESCRIPTION = (

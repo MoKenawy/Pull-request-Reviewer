@@ -160,8 +160,10 @@ flowchart LR
     F["Finding[] + EvidenceRecord<br/>+ Degradation[]"] --> V["<b>core/output/</b><br/>compute Verdict<br/>serialise ReviewReport"]
     V --> R1["core/output/ renderer<br/>Rich → text"]
     V --> R2["core/output/ JSON"]
-    R1 --> C["<b>cli/</b><br/>write to stdout<br/>map Verdict → exit code"]
+    V --> R3["core/output/ HTML<br/>Jinja2 → one file"]
+    R1 --> C["<b>cli/</b><br/>write to stdout<br/>write a file<br/>map Verdict → exit code"]
     R2 --> C
+    R3 --> C
 
     style V fill:#e8f7e8
     style C fill:#fff4e0
@@ -172,6 +174,8 @@ flowchart LR
 | **The verdict is computed in core**, not in the CLI | FR-10.4c's exit code "reflects the review outcome". If the adapter decided which findings matter, it would be deciding what a finding *means* — FR-10.2's line, one step removed |
 | The CLI maps `Verdict → int` and nothing else | A surface detail. The v3 Action maps the same verdict onto a check-run conclusion |
 | Rich is imported by `core/output/` **and** `cli/` | Per the stack's contract. Both are CF-7; nothing else may |
+| The HTML is **rendered** in `core/output/` and **written** by `cli/` | The same seam as the other two renderers. A template that read the filesystem or the clock would make the rendering non-reproducible and would put an adapter concern in core — and it is reproducibility that lets one renderer serve both a live run and a saved JSON report (FR-10.4d) |
+| Jinja2 escapes by default, and the template carries no script | A rationale is model-authored prose about a repository nobody vouched for. Of the three surfaces only the browser executes what it is handed |
 
 **Proposed verdict policy** (severity was settled 2026-09-14):
 

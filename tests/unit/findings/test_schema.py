@@ -93,3 +93,9 @@ def test_report_schema_lists_every_degradation_code() -> None:
     code_schema = report_schema()["$defs"]["Degradation"]["properties"]["code"]
     assert set(code_schema["enum"]) == ALL_DEGRADATION_CODES
     assert "credential" not in text.lower() and "apikey" not in text.lower()
+
+
+def test_report_schema_lists_the_scope_kinds() -> None:
+    # `commit` joins these with spec 001 task T111; `pull-request` is never a config value (data-model §7).
+    kind = report_schema()["$defs"]["ResolvedScope"]["properties"]["kind"]
+    assert kind["enum"] == ["working-tree", "staged", "range", "pull-request"]

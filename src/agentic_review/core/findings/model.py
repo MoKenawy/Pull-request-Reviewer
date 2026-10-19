@@ -161,8 +161,10 @@ class FindingDraft(WireModel):
         Field(
             ge=1,
             description=(
-                "First line of the problem in the NEW version of the file. Each hunk's '@@ -old +new @@' header gives "
-                "the line number of its first line; count added (+) and context ( ) lines from there."
+                "First line of the problem in the NEW version of the file. Each hunk is labelled '[hunk i]' and its "
+                "'@@ -old,count +new,count @@' header gives, after '+', the line number of its first line; count "
+                "added (+) and context ( ) lines from there. Removed (-) lines are not in the new file and are not "
+                "counted."
             ),
         ),
     ]
@@ -197,21 +199,23 @@ class FindingDraft(WireModel):
             min_length=1,
             description=(
                 "One or two sentences: name the symbol involved, say what is wrong and what it causes. "
-                "Do not restate the diff."
+                "A short suggested fix is welcome, but the consequence matters more. Do not restate the diff."
             ),
         ),
     ]
     rule_id: Annotated[
         str | SkipJsonSchema[None],
         BeforeValidator(_optional_str),
-        Field(description="Leave unset. No pattern rules are loaded, so any value here is rejected."),
+        Field(description="Leave unset. No pattern rules are loaded, so any value here is discarded."),
     ] = None
     evidence: Annotated[
         EvidenceRef,
         Field(
             description=(
-                "Required. What supports this finding: cite the diff hunk that shows it, or mark the finding "
-                "unverified with the reason you could not check it here."
+                "Required. What supports this finding. Usually kind 'diff', citing the '[hunk i]' that shows the "
+                "problem. Use kind 'unverified', with the reason, when you are inferring beyond what the diff shows, "
+                "for example about a caller you cannot see. Cite only material this review has: evidence of a check "
+                "that was not run, or context that was not gathered, is rejected."
             )
         ),
     ]

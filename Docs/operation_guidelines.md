@@ -2,9 +2,10 @@
 
 How to install, configure, run, and troubleshoot `agentic-review`, and how to work on it.
 
-**Written against:** branch `001-walking-skeleton`, feature 001 through User Story 1 (the MVP). This guide describes
-what the code **does today**, not what the specification promises. Sections for later user stories are marked
-*not yet available*. Update this file when a story lands.
+**Written against:** feature 001 through **User Story 2**, plus the pull-request scope (ADR-0011) and the HTML
+report (**FR-10.4d**, Phase 11). This guide describes what the code **does today**, not what the specification
+promises. Capabilities that are not built are listed in [section 11](#11-not-yet-available). Update this file when
+a story lands.
 
 **Authority:** this is an operating guide, not a normative document. Behaviour is defined by
 [`agentic-code-review-srs-v1.md`](./agentic-code-review-srs-v1.md); command-line contracts by
@@ -34,20 +35,28 @@ with them, this guide is wrong.
 ```mermaid
 flowchart LR
     P["Preflight<br/>repo · config · key"] -->|problem| X["message on stderr<br/>exit 3"]
-    P --> C["Change set<br/>HEAD ↔ working tree<br/>+ untracked files"]
+    P --> C["Change set<br/>working tree · branch range<br/>· public pull request"]
     C --> A["Assembly<br/>instructions + diff"]
     A --> R["Review<br/>one model call<br/>emit_finding only"]
     R --> O["Terminal summary<br/>exit 0 / 1 / 2"]
+    R --> F["Report files<br/>--json · --html"]
+    F -.->|"later, offline"| G["render<br/>JSON → HTML"]
 ```
 
 | Available | Not yet |
 |---|---|
-| `agentic-review review` with no options | `--scope`, `--base`, `--config`, `--ceiling`, `--json` |
-| Reviewing **uncommitted** changes (staged + unstaged + untracked) | Staged-only and range scopes |
+| `agentic-review review`, with `--scope`, `--base`, `--head`, `--pr`, `--config`, `--ceiling`, `--json PATH`, `--html PATH` | `--commit`; `--json` to stdout |
+| Reviewing **uncommitted** changes (staged + unstaged + untracked) | Staged-only and single-commit scopes |
+| Reviewing a **branch range** (`--scope range --base REF [--head REF]`) | |
+| Reviewing a **public GitHub pull request** (`--pr URL`), with no checkout | Private repositories; anything posted back to GitHub |
 | Default and configured exclusions | "Nothing to review" short-circuit |
-| One model pass; findings only through `emit_finding`, validated | Repair turn, tool-call ceiling, diff-size refusal |
+| One model pass; findings only through `emit_finding`, validated | Investigation tools; more than one pass |
+| Repair turn, tool-call ceiling (`--ceiling`), diff-size refusal | |
 | Terminal summary, verdict, exit codes 0 / 1 / 2 / 3 | `schema` and `--version` commands |
-| Preflight: repository, config file, credential | A report when the **provider fails** (today it crashes) |
+| A JSON report and a self-contained **HTML report** written to files | |
+| `agentic-review render REPORT --html PATH`, re-rendering a saved report offline | |
+| Preflight: repository, config file, credential | Notice listing ignored config settings |
+| **A report under every failure mode** — provider error, budget exhausted, no tool call — never a traceback | |
 
 ---
 
@@ -149,19 +158,59 @@ uv run --env-file .env agentic-review review
 
 Run from **inside** that repository, and point uv at this project. The paths below are this machine's; adjust them.
 
+> **On Windows, write every path you hand to uv with forward slashes.** uv strips backslashes out of path
+> arguments, so `--env-file "D:\Projects\...\.env"` reaches it as `D:Projects....env` and the command fails before
+> the tool starts. Forward slashes are valid Windows paths, so `D:/Projects/.../.env` works everywhere. This
+> applies to `--project` and `--env-file`, and to the tool's own path arguments, `--config`, `--json` and `--html`.
+> [Section 8](#8-troubleshooting) has the error message, and why it is easy to mistake for a review that ran and
+> found nothing.
+
 ```powershell
-$AR = "D:\Projects\DEPI-industry-project\Pull request Reviewer"
+$AR = "D:/Projects/DEPI-industry-project/Pull-request-Reviewer"
 cd C:\path\to\some-typescript-repo
-uv run --project $AR --env-file "$AR\.env" agentic-review review
+uv run --project $AR --env-file "$AR/.env" agentic-review review
 ```
 
 ```bash
-AR="/d/Projects/DEPI-industry-project/Pull request Reviewer"
+AR="/d/Projects/DEPI-industry-project/Pull-request-Reviewer"
 cd /path/to/some-typescript-repo
 uv run --project "$AR" --env-file "$AR/.env" agentic-review review
 ```
 
 Running from any subdirectory of the repository works; all paths in the output are repository-relative.
+
+### Review a branch without checking it out
+
+```powershell
+uv run --env-file .env agentic-review review --scope range --base main --head feature-x
+```
+
+This reviews what `feature-x` changed **since it left** `main` (`git diff main...feature-x`). Commits that landed on
+`main` afterwards are not shown as the branch's work. `--head` defaults to `HEAD`. The working tree is not read, so
+uncommitted edits are not part of a range.
+
+### Review a public pull request
+
+```powershell
+uv run --project $AR --env-file "$AR/.env" agentic-review review --pr https://github.com/OWNER/REPO/pull/123
+```
+
+It works from **any directory**; no local copy of the repository is needed.
+
+| What happens | Detail |
+|---|---|
+| A temporary clone is made | `git clone --filter=blob:none --no-checkout`: history only, no files on disk. It is deleted when the run ends |
+| The pull request's head is fetched | From `refs/pull/123/head`, so pull requests from forks work |
+| It is compared with a base branch | The repository's **default branch**, unless you pass `--base BRANCH`. git cannot know which branch a pull request targets, so check the scope line if the pull request aims at a release branch |
+| Nothing from the pull request runs | No checkout, no install, no hooks, no tests |
+| No settings are read from it | Not from the pull request, and not from the directory you are in. Use `--config PATH` to give settings; otherwise the defaults apply |
+
+> **Two things leave your machine.** git contacts github.com to read the repository, and the pull request's diff is
+> sent to the model provider like any other review. Only **public** repositories can be read: git is not allowed to
+> use stored credentials or to prompt for a login.
+>
+> This git-based reader is **interim**. It is to be replaced by one backed by the official GitHub MCP server
+> ([ADR-0011](./adr/0011-cli-reads-a-public-pull-request.md)).
 
 ### Try it on the demo repository (recommended first run)
 
@@ -171,10 +220,10 @@ unused variable. The change also contains an excluded build file, a Markdown fil
 new file, so every part of the summary shows up.
 
 ```powershell
-$AR = "D:\Projects\DEPI-industry-project\Pull request Reviewer"
-uv run --project $AR python "$AR\scripts\make_review_demo.py"     # creates ..\review-demo next to the project
-cd "$AR\..\review-demo"
-uv run --project $AR --env-file "$AR\.env" agentic-review review
+$AR = "D:/Projects/DEPI-industry-project/Pull-request-Reviewer"
+uv run --project $AR python "$AR/scripts/make_review_demo.py"     # creates ../review-demo next to the project
+cd "$AR/../review-demo"
+uv run --project $AR --env-file "$AR/.env" agentic-review review
 ```
 
 Compare the findings with `PLANTED_DEFECTS.md` in the demo repository. Rebuild it with `--force`, or put it elsewhere
@@ -199,15 +248,40 @@ export async function loadUser(id: string) {
 git add -A; git commit -qm init
 # plant a defect: without await, a rejected promise escapes the try/catch
 (Get-Content src\user.ts) -replace 'return await fetchUser', 'return fetchUser' | Set-Content -Encoding utf8 src\user.ts
-uv run --project $AR --env-file "$AR\.env" agentic-review review
+uv run --project $AR --env-file "$AR/.env" agentic-review review
+```
+
+### Produce a shareable report
+
+One run writes both files. The terminal summary still goes to stdout, and the exit code is unchanged.
+
+```powershell
+uv run --env-file .env agentic-review review --json review.json --html review.html
+```
+
+`review.html` is a single file that opens in any browser, offline, on a machine with no Python. Send it to someone
+who was not at the terminal, attach it to a pull request, or keep it beside the change it describes.
+
+To re-render it later — after editing the template, or just to read it again — use the saved JSON. **No key, no
+network, no repository, and no model call:**
+
+```powershell
+uv run agentic-review render review.json --html review.html
+```
+
+That is also how to iterate on the report's appearance without spending provider requests. For a sample report with
+no review at all:
+
+```powershell
+uv run python scripts/render_html_demo.py --out sample.html
 ```
 
 ### Use it in a script
 
-The exit code is the contract; the terminal text is not.
+The exit code is the contract; the terminal text is not. The **JSON report** is the machine-readable surface.
 
 ```powershell
-uv run --env-file .env agentic-review review
+uv run --env-file .env agentic-review review --json review.json
 switch ($LASTEXITCODE) {
   0 { "reviewed, nothing blocking" }
   1 { "blocking finding" }
@@ -215,6 +289,28 @@ switch ($LASTEXITCODE) {
   3 { "could not start" }
 }
 ```
+
+Read the report rather than parsing the terminal text:
+
+```powershell
+$report = Get-Content review.json -Raw | ConvertFrom-Json
+$report.verdict                                     # findings | blocking | no-findings | no-judgement | nothing-to-review
+$report.findings | ForEach-Object { "{0}:{1} {2}" -f $_.file, $_.startLine, $_.severity }
+$report.degradations | ForEach-Object { "[{0}] {1}" -f $_.source, $_.code }
+```
+
+```bash
+jq -r '.verdict' review.json
+jq -r '.findings[] | "\(.file):\(.startLine) \(.severity) \(.category)"' review.json
+jq -r '.degradations[] | "[\(.source)] \(.code): \(.detail)"' review.json
+```
+
+**Always read `degradations`, not just `verdict`.** An empty `findings` list with a `no-tool-call` degradation is
+not a clean review — it is a run that never looked properly. The report is designed so the two are
+distinguishable; a script that checks only the verdict throws that away.
+
+On a preflight failure (exit 3) **no file is written**, so a stale report from a previous run is never mistaken for
+this one. Output paths are validated before the model is called, so a mistyped directory costs nothing.
 
 ---
 
@@ -298,7 +394,7 @@ agent:
   investigationTools: false    # true is accepted but has no effect until feature 005
 
 budget:
-  maxTokens: 20000             # PLACEHOLDER (TBD-3); validated, not enforced until User Story 2
+  maxTokens: 200000            # PLACEHOLDER (TBD-3); validated, not enforced until User Story 2
 
 context:                       # validated, no effect until feature 004
   depth: 1
@@ -353,6 +449,74 @@ In this order:
 7. **Degradations**: anything that went wrong, as `[source] code: detail`.
 8. The **verdict**.
 
+### The report files
+
+Two optional flags write the same review to disk. Neither changes the terminal summary, and neither changes the
+exit code — writing a file is not an outcome.
+
+```powershell
+uv run --env-file .env agentic-review review --json r.json --html r.html
+```
+
+| Flag | What it writes |
+|---|---|
+| `--json PATH` | The machine-readable report, conforming to the published review-report schema. **Authoritative.** |
+| `--html PATH` | A self-contained HTML rendering of that same report, for a person who was not at the terminal |
+
+Both need a path — there is no stdout form in this build — both overwrite what is there, and both are checked
+before the review runs, so a mistyped directory costs no provider call. A preflight failure writes neither.
+
+The HTML report is **one file with no script and no network reference**: no CDN, no web font, nothing fetched. It
+opens offline, from a USB stick, on a machine without Python, and it is safe to attach to an email. Everything the
+model wrote — a finding's rationale, a degradation's detail — is escaped and displayed, never interpreted, so a
+`<script>` planted in a reviewed source file shows up as text.
+
+It also lists **every** excluded path, where the terminal collapses the list beyond ten. The JSON report remains
+authoritative; the HTML says so in its own footer.
+
+### What the HTML report contains
+
+In this order, mirroring the terminal summary so the two cannot drift:
+
+| Section | Notes |
+|---|---|
+| Header | Title, when the run started, how long it took, tool and report-schema versions |
+| Verdict banner | One of exactly five sentences, the same wording the terminal prints |
+| Counts by severity | `N blocking / N important / N nit` |
+| The no-tool-call caveat | Shown prominently whenever the model made no tool call — never dimmed, never omitted |
+| Scope | The resolved scope, its kind, base and head refs when relevant, and the no-checks / no-context statements |
+| Degradations | Source, code and detail; says *"No degradation was recorded."* when there were none |
+| Findings | A linked contents list, then each finding with rationale, evidence, rule, turn, and fingerprint |
+| Change summary | Files reviewed, files listed but not reviewed with reasons, and **every** excluded path |
+| Run metadata | Model, provider, sampling, tool-call counters, token counts, budget, per-stage durations |
+| Footer | States that the JSON report is authoritative |
+
+Two deliberate differences from the terminal:
+
+- **Every exclusion is listed**, where the terminal collapses the list beyond ten. A terminal has a height; a
+  document does not, and a collapsed HTML report would be worse than the JSON it exists to make readable. Long
+  lists are folded into a `<details>` element, which hides without omitting.
+- Findings are linked by their id (`f-1`, `f-2`), so a finding can be pointed at with a URL fragment.
+
+Nothing in the document is recomputed: every value is read from the same report the JSON serialises, which is why
+the two can never disagree about what was found.
+
+### Re-render a saved report
+
+`render` turns a JSON report back into HTML without reviewing anything:
+
+```powershell
+uv run agentic-review render r.json --html r.html
+```
+
+It needs no repository, no configuration, no credential and no network — note the absent `--env-file`. The output
+is byte-identical to what `review --html` wrote for that report, which is the point: the HTML can be regenerated,
+restyled or re-read long after the run, and iterating on how a report looks costs no model calls.
+
+`render` exits **0** when it writes the file and **3** when it cannot start — never 1 or 2. It makes no judgement,
+and a stale report on disk must not be able to set a CI job's status. A script that wants the verdict reads it from
+the JSON.
+
 ### Verdicts and exit codes
 
 | Verdict | Meaning | Exit |
@@ -376,6 +540,7 @@ In this order:
 
 | You see | Cause | Fix |
 |---|---|---|
+| `error: No environment file found at: D:ProjectsDEPI-industry-project...` (**exit 2**, from uv, before the tool starts) | A path with backslashes was handed to uv, which strips them; the same happens to `--project`, `--config`, `--json` and `--html` | Use forward slashes: `--env-file "D:/Projects/.../.env"`. Beware that **uv's exit 2 is the same code the review tool uses for "no judgement"**, so this reads as a review that ran and produced nothing when in fact nothing ran. The giveaway is the path in the message with its separators gone |
 | `... is not inside a git repository.` (exit 3) | Run outside a repository | `cd` into the repository |
 | `git was not found on PATH` (exit 3) | git not installed or not on `PATH` | Install git |
 | `No provider credential was found. Looked in: ...` (exit 3) | No key in the environment or the user-level file | Section 3. With `.env`, remember `--env-file` |
@@ -386,10 +551,28 @@ In this order:
 | Traceback ending `AuthenticationError: Error code: 401` or `403` | Key invalid, revoked or without access to that model | Check or recreate the key |
 | Traceback ending `APIConnectionError` / `APITimeoutError` | No network, proxy, or endpoint down | Check connectivity and `agent.baseUrl` |
 | Traceback ending `RateLimitError: Error code: 429` | Free-tier rate limit | Wait and retry |
-| Traceback ending `NotImplementedError: the staged scope arrives with User Story 4` | `scope: staged` or `range` in the config | Remove `scope` or set `working-tree` |
+| Traceback ending `NotImplementedError: the staged scope arrives with User Story 4` | `scope: staged` in the config | Remove `scope` or set `working-tree` |
+| `--scope: 'staged' is not available in this build` (exit 3) | Only `working-tree` and `range` are built | Use one of those, or `--pr` |
+| `The range scope needs a base to compare with` (exit 3) | `--scope range` (or `scope: range`) without `--base` | Add `--base REF` |
+| `The range base '...' does not exist` / `The range head '...' does not exist` (exit 3) | A mistyped or unfetched ref | `git fetch`, or name an existing branch, tag or commit |
+| `--pr: '...' is not a GitHub pull request URL` (exit 3) | Not of the form `https://github.com/OWNER/REPO/pull/N` | Paste the pull request's URL from the browser |
+| `The repository of ... could not be cloned` with `terminal prompts disabled` (exit 3) | The repository is private or does not exist | Only public repositories can be read |
+| `The repository of ... could not be cloned` with a network error (exit 3) | No connection to github.com, or a proxy | Check connectivity |
+| `Pull request #N was not found in OWNER/REPO` (exit 3) | Wrong number, or not a pull request | Check the URL |
+| `The base branch '...' does not exist in OWNER/REPO` (exit 3) | `--base` names a branch the repository does not have | Name the branch the pull request targets |
+| A `--pr` review ends `budget-exhausted` (exit 2) | The pull request's diff is larger than `budget.maxTokens` | Raise it in a file passed with `--config` |
+| A `--pr` review ignores your `.agentic-review.yml` | By design: a pull request review reads settings only from `--config` | Pass `--config PATH` |
 | `Verdict: no findings were accepted.` with a `no-tool-call` degradation | Model did not call the tool | Section 7; try another model |
 | Review ran but a file is missing from "Reviewed" | Excluded, deleted, binary, or not TS/JS | Read the "listed, not reviewed" and "Excluded" sections |
 | A clean change still calls the model | "Nothing to review" is not implemented yet | Expected until User Story 4 |
+| `--json: writing the report to stdout is not available in this build` (exit 3) | A bare `--json`, or `--json -` | Give it a path. The stdout form arrives with User Story 5 |
+| `--html: the directory ... does not exist` (exit 3) | The output path's parent is missing | Create it, or choose another path. Checked **before** the model is called |
+| `--html: ... is a directory; give it a file path` (exit 3) | A directory was passed where a file was expected | Name the file |
+| `REPORT: could not read ...` (exit 3, from `render`) | The JSON report is missing or unreadable | Check the path |
+| `REPORT: ... this build reads review-report schema 1.0; the file declares 1.1` (exit 3) | The report was written by a newer build | Re-run the review, or use the build that wrote it |
+| `REPORT: ... not a JSON document: ... at line N, column M` (exit 3) | The file is truncated or is not a report | Re-run the review to write it again |
+| `render` exits 0 on a report full of blocking findings | **By design.** `render` makes no judgement | Read `verdict` from the JSON; a stale report must not set a CI status |
+| The HTML report shows a finding's text with `&lt;script&gt;` in it | **Correct.** Model-authored text is escaped, never executed | Nothing to fix |
 
 > **Every traceback above is a known gap, not the intended behaviour.** The specification requires a report with exit 2
 > for provider failures (FR-11.2). It arrives with User Story 2. Tracebacks never contain the key.
@@ -407,7 +590,7 @@ stand-in that drives the real review graph.
 uv run pytest                                  # everything
 uv run pytest tests/unit/changeset -q          # one package
 uv run pytest -k "scenario2" -q                # by name
-uv run lint-imports                            # structural contracts 1, 2, 3, 6
+uv run lint-imports                            # structural contracts 1, 2, 3, 3b, 6, 8
 ```
 
 | Suite | Proves |
@@ -416,8 +599,11 @@ uv run lint-imports                            # structural contracts 1, 2, 3, 6
 | `tests/unit/findings/` | Finding shape, the tool and report schemas are generated, the fixed rejection reasons, fingerprint |
 | `tests/unit/config/` | Defaults, per-field merge, unknown and duplicate keys, credential lookup, redaction |
 | `tests/unit/changeset/` | Diff parsing, hunks verbatim, renames, binary and untracked files, exclusions |
-| `tests/unit/assembly/`, `agent/`, `output/`, `cli/` | Prompt content, tool binding (no `tool_choice`), graph path, verdicts, rendering |
-| `tests/integration/test_story1_*` | User Story 1 end to end through `run_review` and the CLI |
+| `tests/unit/assembly/`, `agents/`, `cli/` | Prompt content, tool binding (no `tool_choice`), the graph path, ceiling and repair turn, exit codes, output-path refusal |
+| `tests/unit/output/` | Verdicts; the terminal, JSON and **HTML** renderings from one report; loading a saved report |
+| `tests/integration/test_story1_*`, `test_story2_*` | User Stories 1 and 2 end to end through `run_review` and the CLI |
+| `tests/integration/test_html_report.py` | `--json`/`--html`, and that `render` reproduces the run's HTML byte for byte |
+| `tests/integration/test_pull_request_scope.py` | `--pr`, against a local stand-in for GitHub |
 
 ### Structural rules the checks enforce
 
@@ -425,8 +611,11 @@ uv run lint-imports                            # structural contracts 1, 2, 3, 6
 |---|---|
 | Only `core/output/` and `cli/` import `rich` | import-linter contract 1 |
 | Only `core/changeset/` runs git | contract 2 + `tests/structural/test_git_confinement.py` |
-| Only `core/agent/` imports `langchain_*`, `langgraph`, `openai` | contract 3 |
-| `cli > pipeline > agent > assembly \| output > changeset > findings \| config`; nothing imports `cli` | contract 6 |
+| Only `agents/` imports `langchain_*`, `langgraph`, `openai`; no package under `core/` may | contract 3 ([ADR-0010](./adr/0010-agents-package-separate-from-core.md)) |
+| `agents/pipeline_agent.py` may import LangGraph, but never a provider client | contract 3b |
+| `cli > agents > pipeline > assembly \| output \| review > changeset > findings \| config`; nothing imports `cli` | contract 6 |
+| Only `core/output/` imports `jinja2` | contract 8 + `tests/structural/test_template_escaping.py` |
+| The HTML template marks nothing `\|safe`, fetches nothing, and is reached through `importlib.resources` | `tests/structural/test_template_escaping.py` |
 
 If `lint-imports` reports a broken contract, move the import. Do not relax the contract: each one protects a
 requirement (FR-5.8, FR-10.2, AC-10).
@@ -434,8 +623,8 @@ requirement (FR-5.8, FR-10.2, AC-10).
 ### Writing a test with the stand-in model
 
 ```python
-from agentic_review.core.agent.build import build_review_port
-from agentic_review.core.pipeline.run import ReviewRequest, Reviewed, run_review
+from agentic_review.agents.review_port import build_review_port
+from agentic_review.agents.pipeline_agent import ReviewRequest, Reviewed, run_review
 from tests.support.repo_builder import RepoBuilder
 from tests.support.scripted_chat_model import ScriptedChatModel, ai_reply, finding_call
 
@@ -454,6 +643,12 @@ def test_example(tmp_path, canary_env):
 
 Also apply `tests/support/report_assertions.py` (`assert_valid_report`, `assert_invariants`, `assert_no_canary`,
 `assert_stage_durations`) to every report an integration test produces.
+
+### Run it from a notebook
+
+[`notebooks/run_review_quickstart.ipynb`](../notebooks/run_review_quickstart.ipynb) is the shortest path to a
+working review: set the repository, model and base URL in its first cell, then run all. It covers the
+working-tree, range and pull-request scopes, and writes the JSON and HTML reports.
 
 ### Explore the flow interactively
 
@@ -512,14 +707,15 @@ Each run is a real, rate-limited API call; 50 runs per model take a while on the
 
 ## 11. Not yet available
 
+User Stories 1 and 2 are built, so provider failures, the repair turn, the tool-call ceiling and the diff-size
+refusal all work today and are documented above. What remains:
+
 | Capability | Arrives in |
 |---|---|
-| Provider failures produce a report and exit 2, instead of a traceback | Feature 001, User Story 2 |
-| Repair turn (one retry for rejected findings), tool-call ceiling, `--ceiling` | Feature 001, User Story 2 |
-| Refusing a diff larger than `budget.maxTokens` | Feature 001, User Story 2 |
-| `--config PATH`, `--base REF`, range-base check | Feature 001, User Story 3 |
-| `--scope staged \| range`, "nothing to review" | Feature 001, User Story 4 |
-| `--json [PATH]`, `agentic-review schema`, `--version` | Feature 001, User Story 5 |
+| `--commit REF` and its check; the rest of the preflight contract | Feature 001, User Story 3 |
+| `--scope staged \| commit` (reviewing one commit needs both rows), "nothing to review" | Feature 001, User Story 4 |
+| A pull-request reader backed by the GitHub MCP server (private repositories, the true base branch) | Its own ADR, after ADR-0011 |
+| `--json` to **stdout** (the value-less form), `agentic-review schema`, `--version` | Feature 001, User Story 5 |
 | Notice listing ignored config settings; clean handling of internal errors | Feature 001, Polish |
 | Running the project's tests and type-check as evidence | Feature 002 |
 | Pattern rules, `regression` command, catch rate | Feature 003 |

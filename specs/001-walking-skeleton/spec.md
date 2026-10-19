@@ -4,11 +4,11 @@
 
 **Created**: 2026-09-17
 
-**Status**: Approved 2026-09-17. Design gaps D-1…D-4 approved; D-5 (raised by the plan) decided by rewording Story 2 and SC-003
+**Status**: Approved 2026-09-17. Design gaps D-1…D-4 approved; D-5 (raised by the plan) decided by rewording Story 2 and SC-003. **Amended 2026-10-09:** a single-commit scope added to FR-005, FR-001 and Story 4 (scenario 6), following SRS v1.4's amendment of FR-10.3a; and a pull-request scope and a nameable range head added (FR-005, FR-001, new FR-032, Story 4 scenarios 7–8), following SRS v1.5 and ADR-0011
 
 **Input**: User description: "Feature 1 — the walking skeleton (SRS Appendix A, step 1: CF-1 → CF-5 → CF-7, with the minimum of CF-6 and CF-9 needed to reach a model). A developer runs one review command in a TypeScript/JavaScript git repository. The tool resolves what changed (working tree, staged, or a range), sends only the diff to the model in a single pass, accepts findings only through the validated emit_finding tool call (with one repair turn), and prints a terminal summary plus a schema-valid JSON report with a stable exit code. It must be honest that no checks ran and no related context was gathered in this build. Checks/evidence, the pattern library and regression harness, parsing and related context, investigation tools, and hardening belong to later features."
 
-**Authority**: [`Docs/agentic-code-review-srs-v1.md`](../../Docs/agentic-code-review-srs-v1.md) v1.1 is normative. This spec **selects** requirements from it and adds none. Design detail lives in [`Docs/design/`](../../Docs/design/). Where this file and those disagree, this file is wrong.
+**Authority**: [`Docs/agentic-code-review-srs-v1.md`](../../Docs/agentic-code-review-srs-v1.md) is normative — v1.1 when this spec was approved, v1.4 since FR-10.3a gained the single-commit scope, v1.5 since it gained the pull-request scope. This spec **selects** requirements from it and adds none. Design detail lives in [`Docs/design/`](../../Docs/design/). Where this file and those disagree, this file is wrong.
 
 ---
 
@@ -18,7 +18,7 @@
 flowchart LR
     DEV["Developer runs<br/><b>review</b>"] --> PRE["Preflight<br/>git repo · config · key"]
     PRE -->|"problem"| STOP["Clear message<br/>exit 3 · no model call"]
-    PRE --> CS["Resolve the change<br/>working tree · staged · range<br/>+ exclusions"]
+    PRE --> CS["Resolve the change<br/>working tree · staged · range · commit<br/>· pull request + exclusions"]
     CS -->|"nothing to review"| NONE["Says so<br/>exit 0 · no model call"]
     CS --> M["<b>One model pass</b><br/>diff only<br/>findings only via the tool<br/>one repair turn"]
     M --> OUT["Terminal summary<br/>+ JSON report<br/>+ exit code 0 / 1 / 2"]
@@ -95,18 +95,18 @@ A developer runs the tool outside a repository, with a broken config file, or wi
 1. **Given** the current directory is not inside a git repository, **When** the review runs, **Then** it stops with a message saying so and exits **3**.
 2. **Given** `.agentic-review.yml` has a field with an invalid value, or a field that does not exist, **When** the review runs, **Then** it stops with a message **naming that field** and exits **3** — it never falls back to defaults silently (FR-1.2d).
 3. **Given** no provider credential is available, **When** the review runs, **Then** it stops with a message saying the credential is missing, naming where it may be supplied, and exits **3**.
-4. **Given** a range review names a base that does not exist, **When** the review runs, **Then** it stops with a message naming the base and exits **3**.
+4. **Given** a range review names a base or head that does not exist, a commit review names a commit that does not exist, or a pull-request review names a pull request that cannot be read, **When** the review runs, **Then** it stops with a message naming that ref or pull request and exits **3**.
 5. **Given** any preflight failure, **When** the run stops, **Then** the model was not called and no change was resolved.
 
 ---
 
 ### User Story 4 — Choose what gets reviewed (Priority: P4)
 
-A developer wants to review only what they have staged, or everything on their branch since `main`. Generated and vendored files should never be reviewed, and they should be able to add their own exclusions.
+A developer wants to review only what they have staged, everything on a branch since `main`, one commit that is already in history, or someone else's public pull request on GitHub. Generated and vendored files should never be reviewed, and they should be able to add their own exclusions.
 
 **Why this priority**: FR-10.3a is a Must and the scopes are cheap once one exists, but the default scope alone already makes the feature usable.
 
-**Independent Test**: In a fixture repository with staged and unstaged edits, a two-commit branch, and a changed file under `dist/`, run each scope. Each reviews exactly the expected files, and `dist/` appears only in the excluded list.
+**Independent Test**: In a fixture repository with staged and unstaged edits, a two-commit branch, and a changed file under `dist/`, run each scope, including one of the branch's two commits on its own. Each reviews exactly the expected files, and `dist/` appears only in the excluded list.
 
 **Acceptance Scenarios**:
 
@@ -115,6 +115,9 @@ A developer wants to review only what they have staged, or everything on their b
 3. **Given** a changed file matching the default exclusion list, **When** any scope is resolved, **Then** the file is not sent to the model and is listed as excluded, with the rule that excluded it.
 4. **Given** the config adds an exclusion pattern, **When** a scope is resolved, **Then** that pattern **and** the default exclusions both apply — adding one pattern never removes the defaults.
 5. **Given** every changed file is excluded, deleted, binary, or not TypeScript/JavaScript, **When** the scope is resolved, **Then** the tool says there is nothing to review, lists why, does not call the model, and exits **0**.
+6. **Given** a commit that is already in history, with other commits after it and uncommitted edits in the working tree, **When** the developer names that commit, **Then** exactly the changes that commit introduced are reviewed — against its parent, and regardless of what is checked out or uncommitted — and the scope is stated as that commit, chosen, not defaulted.
+7. **Given** a branch that is not checked out, **When** the developer selects a range naming it as the head, **Then** what that branch changed since it left the base is reviewed — not what is checked out, and not what is uncommitted — and both refs are recorded.
+8. **Given** the URL of a public GitHub pull request, **When** the developer names it, from any directory, **Then** what the pull request changed since it left the branch it targets is reviewed; the scope states the pull request and the base used; nothing from the pull request was executed and no configuration was read from it; and nothing is left on disk afterwards.
 
 ---
 
@@ -142,11 +145,19 @@ A developer, or the maintainer building the regression harness later, wants a ma
 - **Deleted file**: listed in the change summary; no diff text is sent to the model and it is not reviewed.
 - **Binary file**: listed in the change summary as binary; not sent, not reviewed.
 - **Non-TS/JS file** (for example `README.md`, `package.json`): listed; not sent, not reviewed.
+- **Root commit reviewed on its own**: it has no parent, so every file in it is reviewed as added.
+- **Merge commit reviewed on its own**: compared with its first parent, and the stated scope says so.
+- **Uncommitted edits during a single-commit review**: not reviewed and not read; the reviewed text is the commit's own.
+- **Pull request whose target is not the default branch**: compared with the default branch unless the developer names the base; the stated scope says which base was used and whether it was the default.
+- **Pull request that adds or changes a configuration file**: the file is listed as a changed file and has no effect on the review.
+- **Pull request in a repository that is private, missing or unreachable**: stops before the model with a message naming it; no login prompt appears.
+- **Range whose base and head share no history**: stops before the model; there is no change to compare.
+- **Checks during a single-commit review**: none run in this feature under any scope. When feature 002 adds them, this scope still runs none and records each as skipped (SRS FR-4.8).
 - **Repository root vs subdirectory**: the command works from any directory inside the repository; all paths are repository-relative with forward slashes, on every operating system.
 - **Finding for a file that was not reviewed**: rejected at validation, and the repair turn names the problem (FR-013).
 - **Finding line range outside the file, or end before start**: rejected at validation (FR-013).
 - **Finding citing test results or related context**: rejected — neither exists in this feature's runs (FR-013).
-- **Finding naming a pattern rule**: rejected — no rules are loaded in this feature (FR-013).
+- **Finding naming a pattern rule**: accepted with the rule name discarded — no rules are loaded in this feature, so there is none it could be corrected to, and the finding itself is unaffected (FR-013). *(Changed 2026-10-09: it was rejected.)*
 - **Several findings in one reply, some valid and some not**: valid ones are accepted immediately; only the invalid ones go to the repair turn.
 - **Some findings accepted, and the repair turn still fails**: accepted findings are kept and reported; the run records the invalid output as a degradation and is reported as **completed**, not as no judgement (see Assumptions).
 - **Model replies with prose and no tool call**: the prose is discarded, never parsed for findings, and the run records that no tool call was made.
@@ -163,14 +174,14 @@ Each requirement names the SRS identifiers it delivers. *Partial* means the SRS 
 
 **Starting a run**
 
-- **FR-001**: The system MUST check, before resolving any change or calling any model, that it is inside a git repository, that the configuration file (if present) is valid, that a provider credential is available, and that any named range base exists. Any failure MUST stop the run with a message naming the specific problem, with exit code 3 and no model call. — *FR-9.3 (partial: test-script check arrives in 002), AC-9*
+- **FR-001**: The system MUST check, before resolving any change or calling any model, that it is inside a git repository, that the configuration file (if present) is valid, that a provider credential is available, and that any named range base, range head or commit exists, and that any named pull request can be read. Any failure MUST stop the run with a message naming the specific problem, with exit code 3 and no model call. — *FR-9.3 (partial: test-script check arrives in 002), AC-9*
 - **FR-002**: The system MUST read `.agentic-review.yml` from the repository root when present, apply documented defaults when it is absent, apply a field's default when that field is missing, and fail naming the offending field when a value is invalid or a field is unknown. — *FR-1.2a, FR-1.2b, FR-1.2c, FR-1.2d*
 - **FR-003**: The system MUST validate the whole documented configuration schema, including sections for capabilities not yet built, so that a configuration written now stays valid later. Settings for unbuilt capabilities MUST have no effect and MUST be reported once as ignored in this build. — *FR-1.2d; `Docs/design/04-contracts.md` §7*
 - **FR-004**: The system MUST read the provider credential only from the environment or user-level configuration outside the repository. The configuration file MUST offer no place to put it, and the credential MUST never appear in either output, any log, or any error message. — *FR-1.3a*
 
 **Resolving the change**
 
-- **FR-005**: The system MUST resolve one of three scopes: uncommitted working-tree changes (the documented default), staged changes only, or the changes between a named base and the current head. — *FR-10.3a*
+- **FR-005**: The system MUST resolve one of five scopes: uncommitted working-tree changes (the documented default), staged changes only, the changes between a named base and a head (the current head unless another is named), the changes introduced by a single named commit, or the changes of a public pull request named by its URL. — *FR-10.3a (amended in SRS v1.4 and v1.5)*
 - **FR-006**: The system MUST state the resolved scope in both outputs, and MUST record whether it was chosen or defaulted. — *FR-10.3b*
 - **FR-007**: The system MUST represent the change as a list of changed files — each with its change type (added, modified, deleted, renamed), previous path when renamed, whether it is binary, and its diff hunks — in a structure that does not depend on which scope produced it. — *FR-10.3c*
 - **FR-008**: The system MUST exclude generated, vendored, and build-output paths using a documented default list merged with any configured patterns, applied when the change is resolved. Every excluded path MUST be recorded with the rule that excluded it. — *FR-3.5*
@@ -206,6 +217,10 @@ Each requirement names the SRS identifiers it delivers. *Partial* means the SRS 
 
 - **FR-030**: Automated structural checks MUST verify, on every commit, the rules this feature's components make checkable: only the output component uses the terminal-rendering dependency; only the change-set component uses git; only the review-step component uses the agent framework; nothing depends on the command-line layer. — *FR-5.8, FR-10.2, AC-10 (partial: the two context-provider clauses arrive in 004)*
 - **FR-031**: Automated tests MUST run with no credential and no network, using a stand-in model, and MUST cover every acceptance scenario in Stories 1–5 and every edge case above.
+
+**Pull requests** *(added 2026-10-09)*
+
+- **FR-032**: When the change comes from a pull request, the system MUST execute nothing from it and MUST read no configuration from it — settings come from a file the developer names, or from the defaults. Whatever was fetched to read it MUST be removed when the run ends. How the pull request is fetched MUST stay behind one interface, so that it can be replaced without touching any other part of the system. — *FR-10.3d, FR-10.3c; ADR-0011*
 
 ### Traceability to the SRS
 
@@ -244,6 +259,7 @@ A scannable rollup of the trailing italic clause on each requirement above. `src
 | FR-029 | FR-11.3 | | `core/pipeline/timing.py`, `core/findings/report.py` |
 | FR-030 | FR-10.3c, FR-5.8, FR-10.2 | context-provider clauses — **004** | `tests/structural/` |
 | FR-031 | *(none — Principle VII, constitution)* | | `tests/` |
+| FR-032 | FR-10.3d, FR-10.3c | a reader backed by the GitHub MCP server — **its own ADR** | `core/changeset/pull_request.py`, `core/pipeline/preflight.py` |
 
 **No SRS parent**: FR-009, FR-010, FR-031 — each maps to a project or constitution decision, not a numbered SRS Must/Should.
 
@@ -255,7 +271,7 @@ A future feature's own traceability subsection follows this same shape, in its o
 
 | Not delivered | SRS | Arrives in |
 |---|---|---|
-| Running tests and type-check; evidence in the prompt; test-script prerequisite check | FR-4.1–4.7, FR-2.5c, FR-9.3 (part), AC-2, AC-7 | **002** execution evidence |
+| Running tests and type-check; evidence in the prompt; test-script prerequisite check | FR-4.1–4.8, FR-2.5c, FR-9.3 (part), AC-2, AC-7 | **002** execution evidence |
 | Pattern library, five rules, rule attribution, regression harness, `regression` command, catch predicate | FR-6.1, FR-6.2a–f, FR-6.3a, FR-5.3, AC-4, AC-5 | **003** measurement |
 | Parsing, related context, depth option, resolver sidecar, per-section budgets and eviction | FR-2.2–2.6h, FR-2.3c, FR-2.5, FR-2.5a, AC-6, AC-8, AC-12, AC-14 | **004** context quality |
 | Investigation tools, `--investigate`, remaining-calls signal | FR-5.7a (enabled), FR-5.7b, FR-5.7c, AC-11 | **005** investigation experiment |
@@ -264,7 +280,7 @@ A future feature's own traceability subsection follows this same shape, in its o
 
 ### Key Entities
 
-- **Resolved scope**: what was reviewed — kind (working tree, staged, range), base and head for a range, whether it was defaulted, a one-line description.
+- **Resolved scope**: what was reviewed — kind (working tree, staged, range, commit, pull request), base and head for a range or a pull request, the commit for a commit, whether it was defaulted, a one-line description.
 - **Change set**: the reviewed repository's changed files and their hunks, plus excluded paths. Carries diff text inside the run; never written to the report.
 - **Change summary**: the change set without diff text — what the report carries.
 - **Finding draft**: exactly what the model may report — location, severity, category, rationale, optional rule, evidence reference.

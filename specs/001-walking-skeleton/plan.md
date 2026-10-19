@@ -11,8 +11,8 @@ documents are silent, the decision is flagged as a **design gap** below, provisi
 
 ## Summary
 
-Build the first runnable slice of the reviewer. `agentic-review review` resolves a working-tree, staged, or range
-change set through the git CLI, applies the default and configured exclusions, and sends the complete diff of every
+Build the first runnable slice of the reviewer. `agentic-review review` resolves a working-tree, staged, range,
+single-commit or pull-request change set through the git CLI, applies the default and configured exclusions, and sends the complete diff of every
 TypeScript/JavaScript file to one model pass. Findings are accepted **only** through the `emit_finding` tool call,
 checked against the finding model **and** against what the run actually showed the model, with one repair turn.
 The tool prints a Rich terminal summary and, on request, a schema-valid JSON report, and exits 0, 1, 2 or 3.
@@ -137,7 +137,8 @@ src/agentic_review/
     ├── changeset/                # CF-1 — the only package that runs git
     │   ├── _git.py               # subprocess argv wrapper (private)
     │   ├── model.py              # ChangeSet 🔒, ChangedFile, Hunk, ExcludedPath, ScopeRequest
-    │   ├── resolve.py            # three scopes, untracked files, unborn HEAD
+    │   ├── resolve.py            # the local scopes, diff_branches() (three-dot diff), untracked files, unborn HEAD
+    │   ├── pull_request.py       # PullRequestSource seam; GitPullRequestSource (interim — ADR-0011, R-25)
     │   ├── diff_parser.py        # name-status/numstat/-z parsing, hunk splitting, changed_line_ranges
     │   ├── exclusion.py          # glob translation, default list, rule naming
     │   └── summary.py            # summarise(), measure_new_files()
@@ -264,6 +265,24 @@ next edits it. It is not part of 001's approval or write-back. The number is kep
 | **D-8** | Vocabularies and fields the report needs that design never fixed: the `verdict` values, two new `completionStatus` values, `ChangeSummary.files[].reviewed` and `notReviewedReason`, `null` depths meaning "not gathered", and 📦 types housed in `findings/` for layering | As in [data-model.md](./data-model.md) §2, §6 and [R-17](./research.md#r-17--verdict-completion-status-exit-code), [R-22](./research.md#r-22--schema-versioning-and-the-empty-sections) | `01-logical-architecture.md` §3–§4; `02-domain-model.md` §3.1, §3.6; `04-contracts.md` §5 |
 | **D-9** | The spec calls the provider request timeout a placeholder, but 04 §7 has no field for it | Add `agent.requestTimeoutSeconds` (default 60, labelled placeholder). An additive config field | `04-contracts.md` §7 |
 | **D-10** | 02 §3.4a and 04 §4.2 say `denied` has no producer in v1. A call beyond the tool-call ceiling is "understood, not permitted", which is exactly `denied` | Calls beyond the ceiling receive `denied` (R-13) | `02-domain-model.md` §3.4a; `04-contracts.md` §4.2 |
+
+**Added 2026-10-09, with the single-commit scope** (SRS v1.4 amended FR-10.3a at the maintainer's request; the
+spec's FR-005 and Story 4 follow it). Two more gaps, numbered on from the table above:
+
+| # | Gap | Decision | Write back to |
+|---|---|---|---|
+| **D-11** | FR-10.3a now names a single commit as a scope, but not what it is compared with, nor what a root or a merge commit means | ✅ **Decided 2026-10-09.** First parent of the commit ↔ the commit; git's empty tree for a root commit; a merge commit against its first parent, stated in the description. The working tree and index are not read ([R-4](./research.md#r-4--what-each-scope-means)) | `02-domain-model.md` §3.1 — **written back 2026-10-09**; `04-contracts.md` §6 likewise |
+| **D-12** ⚠️ | CF-2 and CF-3 read the working tree, but under `commit` the working tree need not hold the reviewed version. The same is already true of `staged`, and of `range` with uncommitted edits — `commit` only makes it impossible to overlook | **Partly decided 2026-10-09 (maintainer).** ✅ **`commit` + checks:** no check is executed; each is recorded as skipped, with the reason that checks do not apply to this scope. The scope exists to read one commit for its problems, not to gather evidence about it. Now SRS **FR-4.8**; built by feature 002, and nothing in 001 changes, because 001 runs no checks under any scope. **Still open:** `staged`, and `range` with uncommitted edits, where checks are expected (the working tree as it stands, or a temporary checkout); and where CF-2 reads related context from under `commit` | SRS §4.3 (FR-4.8) and `02-domain-model.md` §3.1 — **written back 2026-10-09**; the open parts belong to 002's and 004's own specs |
+
+**Added 2026-10-09, with the pull-request scope** ([ADR-0011](../../Docs/adr/0011-cli-reads-a-public-pull-request.md),
+SRS v1.5). Built ahead of User Stories 3 and 4 at the maintainer's request, as tasks Phase 10:
+
+| # | Gap | Decision | Write back to |
+|---|---|---|---|
+| **D-13** | FR-10.3a now names a pull request by URL, and FR-10.3d says nothing from it may run or configure the review — but not how it is read, what it is compared with, where settings come from instead, or what a failure to read it is | ✅ **Decided 2026-10-09.** Read with git into a temporary no-checkout, blobless clone; head from `refs/pull/<n>/head`; base is the default branch unless `--base`; settings from `--config` or the defaults; unreadable → preflight failure; the clone is always removed; all of it behind `PullRequestSource`, whose git implementation is **interim** pending the GitHub MCP server ([R-25](./research.md#r-25--reading-a-pull-request-added-2026-10-09-srs-v15-adr-0011)). `range` gains `--head` because it is the same comparison | `02-domain-model.md` §3.1 and `04-contracts.md` §6 — **written back 2026-10-09** |
+
+D-12 applies to this scope too, and is already answered for it: no checks run (FR-4.8), and related context
+under a pull request is 004's to decide.
 
 Carried from the spec, and done on 2026-09-17: the D-1…D-4 write-backs; `02-domain-model.md` §3.8 no longer calls
 DB-06 unanswered; `03-behaviour.md` §6 no longer shows the unmeasured "2–5s" figure. `Docs/Draft/agentic-code-review-srs-ar.md` is unaffected,

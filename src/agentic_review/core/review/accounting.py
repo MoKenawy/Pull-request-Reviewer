@@ -1,4 +1,4 @@
-"""Counting a review's tool calls and tokens (research R-13, FR-8.2d)."""
+"""Counting a review's tool calls and tokens, and holding the tool-call ceiling (research R-13, FR-8.2d, FR-5.7)."""
 
 from __future__ import annotations
 
@@ -12,13 +12,29 @@ from agentic_review.core.findings.schema import SCHEMA_VERSION
 
 @dataclass
 class CallAccounting:
+    ceiling: int | None = None  # None = unbounded; the review port always sets agent.toolCallCeiling
     tool_calls_total: int = 0
     tool_calls_emission: int = 0
     tool_calls_investigation: int = 0  # always 0: investigation tools arrive with feature 005
     repair_turns: int = 0
+    dropped_calls: int = 0  # calls denied because the ceiling was already reached; never counted in the totals
     findings: list[Finding] = field(default_factory=list)
     tokens_in: int | None = None
     tokens_out: int | None = None
+
+    @property
+    def ceiling_reached(self) -> bool:
+        return self.ceiling is not None and self.tool_calls_total >= self.ceiling
+
+    def admit_call(self) -> bool:
+        """Whether the next call may be processed. A call past the ceiling is dropped, not counted (invariant 4)."""
+        if self.ceiling_reached:
+            self.dropped_calls += 1
+            return False
+        return True
+
+    def denied_reason(self) -> str:
+        return f"tool-call ceiling of {self.ceiling} reached; this call was not processed"
 
     def count_emission_call(self) -> None:
         # With emit_finding as the only tool, every call the model makes is an attempt to emit a finding.

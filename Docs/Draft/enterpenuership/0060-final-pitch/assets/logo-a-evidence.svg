@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 120" width="600" height="120" role="img" aria-label="Agentic Code Review logo, prototype A: three lines of code, one flagged, with a check badge">
+  <title>Agentic Code Review — prototype A, "the finding and its evidence"</title>
+  <rect width="120" height="120" rx="24" fill="#1d7a4c"/>
+  <rect x="24" y="30" width="52" height="10" rx="5" fill="#f4f2ec" opacity="0.55"/>
+  <rect x="24" y="50" width="72" height="10" rx="5" fill="#f0a04b"/>
+  <rect x="24" y="70" width="40" height="10" rx="5" fill="#f4f2ec" opacity="0.55"/>
+  <circle cx="86" cy="86" r="20" fill="#f4f2ec"/>
+  <path d="M76 86 l7 7 l13 -14" fill="none" stroke="#1d7a4c" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="148" y="75" font-family="'IBM Plex Sans', Arial, sans-serif" font-size="44" font-weight="600" fill="#15181d">Agentic Code Review</text>
+</svg>

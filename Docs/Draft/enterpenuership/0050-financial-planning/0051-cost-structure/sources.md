@@ -1,0 +1,1 @@
+https://graphite.com/blog/the-ideal-pr-is-50-lines-long

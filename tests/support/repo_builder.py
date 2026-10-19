@@ -70,3 +70,18 @@ class RepoBuilder:
     def checkout(self, name: str, *, create: bool = False) -> RepoBuilder:
         self.git("checkout", "-q", *(["-b"] if create else []), name)
         return self
+
+    def config(self, key: str, value: str) -> RepoBuilder:
+        self.git("config", key, value)
+        return self
+
+    def update_ref(self, name: str, revision: str = "HEAD") -> RepoBuilder:
+        self.git("update-ref", name, revision)
+        return self
+
+    def delete_branch(self, name: str) -> RepoBuilder:
+        self.git("branch", "-q", "-D", name)
+        return self
+
+    def rev_parse(self, revision: str = "HEAD", *, short: bool = False) -> str:
+        return self.git("rev-parse", *(["--short"] if short else []), revision).strip()

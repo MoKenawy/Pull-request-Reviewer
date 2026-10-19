@@ -1,0 +1,199 @@
+{#
+  The HTML review report — SRS FR-10.4d. Rendered by core/output/html.py, written by cli/.
+
+  Three rules this file must keep, each with a test behind it:
+
+  1. No <script>, no external src/href, no @import, no web font. A report that fetches anything leaks the fact and
+     timing of a review to a third party and breaks when opened offline. The no-script rule is also what makes the
+     Content-Security-Policy meta below meaningful rather than decorative.
+  2. Nothing is marked |safe, ever. Every value here is escaped by the environment's autoescape. A rationale is
+     model-authored prose about a repository nobody vouched for.
+  3. Nothing reads the clock, the environment or the filesystem. The timestamp shown is run.startedAt, which is in
+     the report already. That is what makes `render` reproduce `review --html` byte for byte.
+#}<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:">
+<title>{{ title }}</title>
+<style>
+  :root {
+    --ink: #1a1c20; --muted: #5c6370; --rule: #dfe2e8; --panel: #f6f7f9; --page: #ffffff;
+    --blocking: #a3222b; --important: #8a5a00; --nit: #2a6072; --flag: #8a5a00;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ink: #e6e8ec; --muted: #9aa1ad; --rule: #333842; --panel: #1d2026; --page: #14161a;
+      --blocking: #ff7b85; --important: #e9b949; --nit: #7fc8de; --flag: #e9b949;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 2rem 1rem; background: var(--page); color: var(--ink);
+    font: 16px/1.55 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  main { max-width: 56rem; margin: 0 auto; }
+  h1 { font-size: 1.45rem; margin: 0 0 .25rem; }
+  h2 { font-size: 1.1rem; margin: 2.25rem 0 .75rem; padding-bottom: .3rem; border-bottom: 1px solid var(--rule); }
+  code, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .92em; }
+  .sub { color: var(--muted); font-size: .88rem; margin: 0 0 1.5rem; }
+  .verdict { padding: .85rem 1rem; border-left: 4px solid var(--muted); background: var(--panel); font-weight: 600; }
+  .verdict-blocking { border-left-color: var(--blocking); }
+  .verdict-findings { border-left-color: var(--important); }
+  .counts { margin: 1rem 0 0; font-variant-numeric: tabular-nums; }
+  .flag {
+    margin: 1rem 0 0; padding: .85rem 1rem; border: 1px solid var(--flag);
+    border-left-width: 4px; background: var(--panel); color: var(--ink);
+  }
+  table { border-collapse: collapse; width: 100%; font-size: .93rem; }
+  th, td { text-align: left; padding: .4rem .6rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; white-space: nowrap; }
+  ul { margin: .25rem 0; padding-left: 1.2rem; }
+  li { margin: .15rem 0; }
+  .finding { margin: 1.25rem 0; padding-left: .9rem; border-left: 3px solid var(--rule); }
+  .finding-blocking { border-left-color: var(--blocking); }
+  .finding-important { border-left-color: var(--important); }
+  .finding-nit { border-left-color: var(--nit); }
+  .finding h3 { margin: 0 0 .3rem; font-size: 1rem; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .tag { display: inline-block; font-size: .78rem; text-transform: uppercase; letter-spacing: .04em; margin-right: .5rem; }
+  .tag-blocking { color: var(--blocking); } .tag-important { color: var(--important); } .tag-nit { color: var(--nit); }
+  .meta { color: var(--muted); font-size: .85rem; margin: .3rem 0 0; }
+  .note { color: var(--muted); }
+  footer { margin-top: 2.5rem; padding-top: .75rem; border-top: 1px solid var(--rule); color: var(--muted); font-size: .82rem; }
+</style>
+</head>
+<body>
+<main>
+
+  <h1>{{ title }}</h1>
+  <p class="sub">
+    Started {{ run.started_at }} · took {{ run.duration_ms }} ms ·
+    agentic-review {{ run.tool_version }} · report schema {{ report.schema_version }}
+  </p>
+
+  <p class="verdict verdict-{{ report.verdict }}">{{ verdict_sentence }}</p>
+
+  <p class="counts">Findings: {{ counts['blocking'] }} blocking / {{ counts['important'] }} important / {{ counts['nit'] }} nit</p>
+
+  {% if no_tool_call_line %}
+  <p class="flag">{{ no_tool_call_line }}</p>
+  {% endif %}
+
+  <h2>Scope</h2>
+  <table>
+    <tr><th>resolved</th><td>{{ scope.description }}</td></tr>
+    <tr><th>kind</th><td>{{ scope.kind }}{% if scope.was_defaulted %} (defaulted){% endif %}</td></tr>
+    {% if scope.base_ref %}
+    <tr><th>base</th><td class="mono">{{ scope.base_ref }}</td></tr>
+    {% endif %}
+    {% if scope.head_ref %}
+    <tr><th>head</th><td class="mono">{{ scope.head_ref }}</td></tr>
+    {% endif %}
+  </table>
+  <p class="note">{{ no_checks_line }} {{ no_context_line }}</p>
+
+  <h2>Degradations</h2>
+  {% if report.degradations %}
+  <table>
+    <tr><th>stage</th><th>reason</th><th>detail</th></tr>
+    {% for degradation in report.degradations %}
+    <tr>
+      <td>{{ degradation.source }}</td>
+      <td class="mono">{{ degradation.code }}</td>
+      <td>{{ degradation.detail }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <p class="note">No degradation was recorded.</p>
+  {% endif %}
+
+  <h2>Findings</h2>
+  {% if findings %}
+  <ul>
+    {% for finding in findings %}
+    <li><a href="#{{ finding.id }}">{{ finding.file }}:{{ finding.span }}</a> — {{ finding.severity }}, {{ finding.category }}</li>
+    {% endfor %}
+  </ul>
+  {% for finding in findings %}
+  <div class="finding finding-{{ finding.severity }}" id="{{ finding.id }}">
+    <h3>{{ finding.file }}:{{ finding.span }}</h3>
+    <p>
+      <span class="tag tag-{{ finding.severity }}">{{ finding.severity }}</span>
+      <span class="tag">{{ finding.category }}</span>
+    </p>
+    <p>{{ finding.rationale }}</p>
+    <p class="meta">
+      evidence: {{ finding.evidence }}
+      {% if finding.rule_id %}· rule: {{ finding.rule_id }}{% endif %}
+      · turn {{ finding.turn_index }}
+      · fingerprint {{ finding.fingerprint }} (groups like findings; not unique per finding)
+    </p>
+  </div>
+  {% endfor %}
+  {% else %}
+  <p class="note">No finding was accepted in this run.</p>
+  {% endif %}
+
+  <h2>Change summary</h2>
+  <h3>Reviewed ({{ reviewed | length }})</h3>
+  {% if reviewed %}
+  <table>
+    <tr><th>path</th><th>change</th><th>language</th><th>hunks</th><th>+/−</th></tr>
+    {% for file in reviewed %}
+    <tr>
+      <td class="mono">{{ file.path }}{% if file.previous_path %} (renamed from {{ file.previous_path }}){% endif %}</td>
+      <td>{{ file.change_type }}</td>
+      <td>{{ file.language }}</td>
+      <td>{{ file.hunk_count }}</td>
+      <td>+{{ file.added_lines }} / −{{ file.removed_lines }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <p class="note">No file was reviewed.</p>
+  {% endif %}
+
+  {% if listed %}
+  <h3>Listed, not reviewed ({{ listed | length }})</h3>
+  <ul>
+    {% for file in listed %}
+    <li><span class="mono">{{ file.path }}</span> — {{ not_reviewed_reasons[file.not_reviewed_reason or 'deleted'] }}</li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+
+  {% if summary.excluded %}
+  <h3>Excluded ({{ summary.excluded | length }})</h3>
+  {# Every exclusion, always. A terminal has a height and collapses past ten; a document does not, and a collapsed
+     HTML report would be strictly worse than the JSON it exists to make readable. <details> hides without omitting. #}
+  <details>
+    <summary>{{ summary.excluded | length }} path(s), each with the rule that excluded it</summary>
+    <ul>
+      {% for excluded in summary.excluded %}
+      <li><span class="mono">{{ excluded.path }}</span> — {{ excluded.rule }}</li>
+      {% endfor %}
+    </ul>
+  </details>
+  {% endif %}
+
+  <h2>Run metadata</h2>
+  <table>
+    {% for label, value in run_rows %}
+    <tr><th>{{ label }}</th><td>{{ value }}</td></tr>
+    {% endfor %}
+    <tr>
+      <th>stage durations</th>
+      <td>{% for label, milliseconds in stage_rows %}{{ label }} {{ milliseconds }} ms{% if not loop.last %} · {% endif %}{% endfor %}</td>
+    </tr>
+  </table>
+
+  <footer>
+    Generated by agentic-review {{ run.tool_version }} from review-report schema {{ report.schema_version }}.
+    This document is a rendering of the JSON report; the JSON report is authoritative.
+  </footer>
+
+</main>
+</body>
+</html>

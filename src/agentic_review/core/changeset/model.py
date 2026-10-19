@@ -58,6 +58,8 @@ class ChangedFile:
 class ScopeRequest:
     kind: ScopeKind
     base: str | None = None
+    head: str | None = None
+    """``range`` only; None means ``HEAD``."""
 
 
 @dataclass(frozen=True)

@@ -77,7 +77,8 @@ mkdir /tmp/ar-demo && cd /tmp/ar-demo && git init -q && git commit -q --allow-em
 | B2 | `agentic-review review` in `/tmp` (not a repository) | stderr names the directory, stdout empty, exit **3** |
 | B3 | In `ar-demo`, with no key set: `agentic-review review` | stderr names `AGENTIC_REVIEW_API_KEY` and the user credential path, exit **3** |
 | B4 | `export AGENTIC_REVIEW_API_KEY=dummy`; write `agent: {toolCallCeling: 5}` (misspelt) to `.agentic-review.yml`; run `review` | stderr names `agent.toolCallCeling`, exit **3** |
-| B5 | Remove the config file. Run `review --scope range --base nope` | stderr names `nope`, exit **3** |
+| B5 | Remove the config file. Run `review --scope range --base nope`, then `review --commit nope` | Each time, stderr names `nope`, exit **3** (`--commit` is not offered until User Story 4) |
+| B5a | `review --pr acme/widgets#7`, then (with network) `review --pr https://github.com/<no-such-owner>/<no-such-repo>/pull/1` | First: stderr says it is not a pull request URL. Second: stderr names the repository; **no login prompt appears**. Both exit **3** |
 | B6 | Create `README.md` and `dist/a.js` only; run `review --json` | stdout is one JSON document with `completionStatus: "nothing-to-review"`; `dist/a.js` is under `excluded` with `default:build-output`; `README.md` is listed as not reviewed; exit **0**; the dummy key made no network call |
 
 With the dummy key, any scenario that reaches the model is expected to produce a **provider-error** report and exit

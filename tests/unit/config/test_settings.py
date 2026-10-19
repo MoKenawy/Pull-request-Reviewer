@@ -24,7 +24,7 @@ def test_defaults() -> None:
     assert settings.agent.temperature == 0
     assert settings.agent.request_timeout_seconds == 60
     assert settings.agent.rate_limit_retry_seconds == 60
-    assert settings.budget.max_tokens == 20000
+    assert settings.budget.max_tokens == 200000
 
 
 def _error_locs(data: dict[str, Any]) -> list[tuple[Any, ...]]:

@@ -1,5 +1,7 @@
 # Chat Result — Needs-vs-Pains Analysis (Agentic Code Review v1)
 
+> **Re-reviewed 2026-10-09.** The analysis below is kept as written. What was decided from it, and the evidence that has arrived since, are in the last section, "Re-review, 2026-10-09", and in [`000-problem-and-audience.md`](./000-problem-and-audience.md).
+
 ## Summary of the discussion
 
 The task was to digest the Prompt 1 background study (Part A problem space, Part B solution landscape) into a needs-vs-pains analysis across five conflicting user segments, working strictly from Part A evidence and inheriting its weaknesses.
@@ -145,3 +147,22 @@ Sev 4, Freq 3. Cleanly technical (A7), clearly solvable. Demoted hard — semi-c
 - The AIDev 61.38% that would support #3-adjacent record-keeping claims rests on an unverifiable future-dated arXiv ID — do not lean on it.
 
 **Honest summary:** the architecture's two most differentiated bets (execution-backed review, reproducible regression set) target the two most underserved gaps — but both rest on the corpus's weakest evidence tier (anecdote and inference), because the strongly-evidenced pains are either commoditized or cultural. Not a reason to abandon them; a reason to build the regression set (FR-6.2b) first, since it's the instrument that would convert leverage claims from inference into measurement.
+
+---
+
+## Re-review, 2026-10-09
+
+**Decided from this analysis** (founder, 2026-10-09). The wording is in [`000-problem-and-audience.md`](./000-problem-and-audience.md).
+
+- **Segment 2, the human reviewer, is the project's one audience.**
+- **One pain comes with it from Segment 3:** "Nothing merges that erodes architecture silently". It is the same defect class as the reviewer's top pain, clean-looking and test-passing but wrong for the codebase. The lead's other three needs stay with Segment 3.
+- **Segments 1, 3, 4 and 5 are possible later expansions,** not secondary audiences.
+- **Among the reviewer's pains,** context-wrong code is the headline, repetitive mechanical checking and the writer-AI's twin are the two supporting pains, and triage and rubber-stamping are not claimed. The table is in section 5 of that file.
+
+**What is out of date above**
+
+- **Ranking #2, "No one can independently verify a reviewer", is no longer only an inference.** A peer-reviewed study (Chowdhury et al., MSR 2026, 3,109 pull requests) found 12 of 13 review agents averaging under 60% signal by a keyword-based measure, and cites earlier work in which human review comments were addressed about 60% of the time against 0.9% to 19.2% for agents' comments. The flag that no source voiced it still holds: no reviewer has said it to us.
+- **Ranking #1 is unchanged:** still anecdote, and still unmeasured in frequency.
+- **The AIDev caveat stands.** That study draws on the AIDev dataset, so the dataset is real. The 61.38% figure has still not been checked at its source and stays unused.
+- **The reviewer's load has since been measured for public repositories:** in ten TypeScript repositories in September 2026, 182 core reviewers did 97.7% of the reviewing, a median of 21.5 pull requests each, against 13 opened per core developer ([`review-volume-report.md`](./0050-financial-planning/0051-cost-structure/review-volume-report.md) §2.5). It measures how much reviewing a reviewer carries, not any single pain.
+

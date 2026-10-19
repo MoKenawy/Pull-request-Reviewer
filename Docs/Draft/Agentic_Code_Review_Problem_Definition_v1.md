@@ -1,14 +1,17 @@
 # Agentic Code Review — Problem Definition (v1)
 
+> **Updated 2026-10-09.** The audience, the wording of the problem statement and the tagline are now set in one place, [`enterpenuership/000-problem-and-audience.md`](./enterpenuership/000-problem-and-audience.md), and this document follows it. Three things changed here: the open-source maintainer is no longer a secondary audience but one of four segments left for later; the primary problem statement uses the wording set there; and POV-2 now has measured evidence behind it. The point-of-view statements, the root-cause chain, the questions and the appendix are otherwise unchanged, and remain the reasoning behind that definition.
+
 ## Audience
 
-**Primary: the organization reviewer** — an engineer performing peer review on a colleague's AI-assisted TS/JS pull request inside a company or funded team. They operate under **employee accountability**: a named human is answerable for what merges, and that accountability — not any tool — is the team's ultimate trust mechanism. What this reviewer lacks is not accountability but a reliable *signal*: they can no longer tell, from clean code and passing tests, whether a change actually fits the repo.
+**The one audience: the organization reviewer** — an engineer performing peer review on a colleague's AI-assisted TS/JS pull request inside a company or funded team. They operate under **employee accountability**: a named human is answerable for what merges, and that accountability — not any tool — is the team's ultimate trust mechanism. What this reviewer lacks is not accountability but a reliable *signal*: they can no longer tell, from clean code and passing tests, whether a change actually fits the repo.
 
-**Secondary: the open-source maintainer/contributor.** Same correctness-signal pain, but with no accountability backstop — no employment stake, no institutional recourse if a review is wrong. This is the audience where independent, evidence-backed review (POV-2) has genuine standalone value rather than being merely an internal measurement tool.
+**Later, not now: the open-source maintainer/contributor.** Until 2026-10-09 this was the secondary audience. It is now one of four segments held for later, with the pull-request author, the tech lead and the security engineer. Same correctness-signal pain, but with no accountability backstop — no employment stake, no institutional recourse if a review is wrong. This is the audience where independent, evidence-backed review (POV-2) has genuine standalone value rather than being merely an internal measurement tool.
 
 > ⚠️ Honest flags on this ordering:
 > - Leading with the org reviewer **reverses the project's earlier locked "OSS-primary" decision.** Treat this document as the record of that pivot; if the pivot wasn't intended, this section is where to catch it.
-> - Because the org reviewer already has employee accountability, **POV-2 (verifiability) is weak for the primary audience** and strong only for the secondary one. The document reflects this rather than pretending verifiability sells equally to both.
+> - **On 2026-10-09 the secondary audience was dropped, not replaced.** There is one audience, the reviewer; every other segment is a possible later expansion.
+> - Because the org reviewer already has employee accountability, **POV-2 (verifiability) is weak for this audience** and strong only for the open-source maintainer. The document reflects this rather than pretending verifiability sells equally to both.
 > - The org setting invites scope creep toward governance, RBAC, and audit features. Those remain **out of v1 scope**; the audience is the reviewer *role*, not the org's compliance apparatus.
 
 ---
@@ -21,7 +24,7 @@
 - **What they used to rely on:** rough code and failing tests as cues for where to look — a correlation AI-assisted production has broken.
 - **Core frustration:** cannot tell, from clean code and green tests, whether a change fits the repo's established shape and convention — and discovers the mismatch only after merge.
 - **Secondary frustrations:** a "second opinion" AI reviewer that silently shares the authoring model's blind spots; fatigue from re-running the same mechanical checks on every diff.
-- **Trust mechanism:** employee accountability — so their need is a better *signal*, not proof the tool is trustworthy (that need belongs to the secondary OSS persona).
+- **Trust mechanism:** employee accountability — so their need is a better *signal*, not proof the tool is trustworthy (that need belongs to the open-source maintainer, a later segment).
 
 ---
 
@@ -32,12 +35,14 @@ The peer reviewer of an AI-assisted TS/JS PR needs to know when code that passed
 
 *Evidence caveat: anecdote (N=3, unquantified). High confidence it exists; soft confidence on frequency.*
 
-**POV-2 — no way to verify the reviewer** *(secondary audience: OSS)*
+**POV-2 — no way to verify the reviewer** *(a later segment: the open-source maintainer)*
 The open-source maintainer adopting any AI reviewer — with no employee-accountability backstop to fall back on — needs evidence that the reviewer's findings are trustworthy before routing scarce attention through it, because staking review capacity on an unmeasured tool just relocates the bottleneck — but every tool on the market (including this one, today) reports its own quality, and no independent precision/recall signal exists.
 
-*Audience scope: this POV is load-bearing for the **secondary** (OSS) audience and weak for the **primary** (org) reviewer, who already trusts review outcomes through employee accountability. It is retained here mainly as a **measurement instrument** (see Commit-First Decision), not as a primary-audience user need.*
+*Audience scope: this POV is load-bearing for the open-source maintainer, who since 2026-10-09 is a later segment, and weak for the organization reviewer, who already trusts review outcomes through employee accountability. It is retained here mainly as a **measurement instrument** (see Commit-First Decision), not as a user need of the audience.*
 
 *Assumption flag: analyst inference (B4 [INFERENCE]), voiced by no Part A source. A meta-need, one step removed from the evidence.*
+
+*Update, 2026-10-09: no longer inference alone. A peer-reviewed study (Chowdhury et al., MSR 2026, 3,109 pull requests; cited in [`enterpenuership/004-market-study.md`](./enterpenuership/004-market-study.md)) found that 12 of 13 review agents average under 60% signal by a keyword-based measure, and it cites earlier work in which human review comments were addressed about 60% of the time against 0.9% to 19.2% for agents' comments. That measures the gap. It is still not a need that a reviewer has voiced to us, and the first half of it reaches the organization reviewer too: an AI review cannot be taken on trust.*
 
 **POV-3 — shared blind spots**
 The reviewer on a team whose writer-AI and reviewer-AI share a model lineage needs the second pass to fail *differently* from the first, because two instances of the same model omit the same things — but a review agent's independence is invisible: you can't tell from the output whether it shares the author's blind spots.
@@ -84,7 +89,11 @@ Three points make that restoration differentiated rather than table stakes:
 
 ## Primary Problem Statement
 
-Teams reviewing AI-assisted TypeScript/JavaScript pull requests cannot tell whether clean-looking, test-passing changes actually fit the repo's established shape and convention, because the surface signals reviewers relied on no longer correlate with *structural* defects — code that passes its tests while choosing the wrong backend, breaking an established convention, or eroding architecture — as distinct from functional bugs (which tests still catch) and invisible-team-memory omissions (which v1 does not address), and existing AI reviewers infer from text without executing the code or exposing evidence that their judgments are reliable.
+Reviewers of AI-assisted TypeScript/JavaScript pull requests cannot tell whether a clean-looking, test-passing change actually fits the codebase. The signals they relied on, rough code and failing tests, no longer point at *structural* defects: code that passes its tests while choosing the wrong backend, breaking an established convention, or eroding the architecture. AI review tools have not been shown to restore that signal: in the studies available, most of their comments are not acted on.
+
+This is distinct from functional bugs (which tests still catch) and from invisible-team-memory omissions (which the product does not address).
+
+*Wording as set on 2026-10-09 in [`enterpenuership/000-problem-and-audience.md`](./enterpenuership/000-problem-and-audience.md). The earlier wording began "Teams reviewing" and ended with a clause about how rival tools work inside ("infer from text without executing the code or exposing evidence that their judgments are reliable"). That clause is replaced by what has been measured, and what rivals do with tests and checks is being re-checked separately (task 2 in [`0064-progress-report.md`](./enterpenuership/0060-final-pitch/0064-progress-report.md)).*
 
 The project is **solved (v1)** when, on a public TS/JS repo using only free tiers, the system runs the project's tests and type-checks in a sandbox, attaches that execution evidence to each finding, and demonstrates against a versioned regression set (FR-6.2b) a measurable, reproducible catch rate on curated test-passing-but-wrong-shape defects — at a false-positive rate low enough that reviewers don't skim past the output.
 
@@ -196,3 +205,5 @@ Whether a reviewer's output helps depends on FP discipline nobody in the corpus 
 Axes **2 and 4 are the roots but unfixable by a tool.** Axis **1** is the mechanism everyone *notices* first (which is why it's tempting) but it's commoditized. The project lives entirely on **axis 3** — signal decoupling — with **5** as its instrument and **6** as an adjacent bet. Everything buildable is downstream of a root the project explicitly cannot touch.
 
 The honest shape: **the project is not solving the root cause. It is restoring one machine-checkable signal that the root cause destroyed.** Naming it this way guards against over-claiming — which, given that the chosen audience (OSS) has the *widest* accountability gap and the *least* ability to close it, is the exact over-claim the project is most at risk of making.
+
+*Note, 2026-10-09: this appendix was written while the audience was still the open-source maintainer, and that last sentence is kept as written. The audience is now the organization reviewer (see the top of this document).*

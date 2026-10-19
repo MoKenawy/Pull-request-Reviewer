@@ -14,7 +14,7 @@ from pydantic.alias_generators import to_camel
 
 ScopeSetting = Literal["working-tree", "staged", "range"]
 
-DEFAULT_MODEL = "meta/llama-3.3-70b-instruct"  # PLACEHOLDER - chosen by test S-1 (research R-21)
+DEFAULT_MODEL = "deepseek-ai/deepseek-v4.1-flash"  # PLACEHOLDER - chosen by test S-1 (research R-21)
 DEFAULT_BASE_URL = "https://integrate.api.nvidia.com/v1"  # NVIDIA NIM free tier (SRS §2.3)
 
 
@@ -65,7 +65,7 @@ class AgentSettings(_Section):
 
 
 class BudgetSettings(_Section):
-    max_tokens: Annotated[int, Field(ge=1)] = 20000  # PLACEHOLDER - SRS §8, TBD-3
+    max_tokens: Annotated[int, Field(ge=1)] = 200000  # PLACEHOLDER - SRS §8, TBD-3
 
 
 class Settings(_Section):

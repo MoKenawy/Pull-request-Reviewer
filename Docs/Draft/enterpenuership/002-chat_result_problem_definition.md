@@ -1,5 +1,7 @@
 # Chat Result — Agentic Code Review: Problem Definition
 
+> **Partly superseded, 2026-10-09.** The audience, the problem statement and the tagline are now worded in one place, [`000-problem-and-audience.md`](./000-problem-and-audience.md). This file stays as the record of how the definition was reached. Two things under "Final result" are out of date and are marked there: the open-source maintainer is no longer a secondary audience, and the problem statement was reworded.
+
 ## What this chat produced
 
 Starting from a prioritized pain-point analysis (background study), this session worked through POV statements, a primary problem statement, HMW questions, a root-cause framing, an audience/persona definition, and supporting artifacts (Arabic translation, a 5-minute pitch script, an executive summary). The through-line was iterative, critical refinement — each artifact challenged for scope creep, contradiction, and evidence strength before being accepted.
@@ -41,8 +43,11 @@ Starting from a prioritized pain-point analysis (background study), this session
 - **Primary:** organization reviewer (peer review inside a company/funded team; trust via employee accountability; lacks a reliable correctness *signal*).
 - **Secondary:** open-source maintainer/contributor (same signal pain, no accountability backstop; the audience where verifiability has standalone value).
 - **Note:** this org-primary ordering reverses the earlier locked OSS-primary decision.
+- **Out of date since 2026-10-09:** there is no secondary audience any more. The organization reviewer is the one audience, and the open-source maintainer is one of four segments left for later ([`000-problem-and-audience.md`](./000-problem-and-audience.md), section 4).
 
 ### Primary Problem Statement
+*Reworded on 2026-10-09; the wording in use is in [`000-problem-and-audience.md`](./000-problem-and-audience.md), section 1. The text below is the one this session produced.*
+
 Teams reviewing AI-assisted TypeScript/JavaScript pull requests cannot tell whether clean-looking, test-passing changes actually fit the repo's established shape and convention, because the surface signals reviewers relied on no longer correlate with *structural* defects — code that passes its tests while choosing the wrong backend, breaking an established convention, or eroding architecture — as distinct from functional bugs (which tests still catch) and invisible-team-memory omissions (which v1 does not address), and existing AI reviewers infer from text without executing the code or exposing evidence that their judgments are reliable.
 
 **Solved (v1)** when, on a public TS/JS repo using only free tiers, the system runs the project's tests and type-checks in a sandbox, attaches that execution evidence to each finding, and demonstrates against a versioned regression set (FR-6.2b) a measurable, reproducible catch rate on curated test-passing-but-wrong-shape defects — at a false-positive rate low enough that reviewers don't skim past the output.

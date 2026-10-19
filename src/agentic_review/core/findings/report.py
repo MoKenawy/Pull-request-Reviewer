@@ -13,7 +13,7 @@ from pydantic.json_schema import SkipJsonSchema
 
 from agentic_review.core.findings.model import Finding, WireModel
 
-ScopeKind = Literal["working-tree", "staged", "range"]
+ScopeKind = Literal["working-tree", "staged", "range", "pull-request"]
 ChangeType = Literal["added", "modified", "deleted", "renamed"]
 Language = Literal["ts", "tsx", "js", "jsx", "other"]
 NotReviewedReason = Literal["deleted", "binary", "not-typescript-or-javascript"]

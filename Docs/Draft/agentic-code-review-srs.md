@@ -44,6 +44,14 @@
 >
 > ⚠️ **[`agentic-code-review-srs-ar.md`](./agentic-code-review-srs-ar.md) does not reflect any of this** and is stale with respect to the identifiers above.
 
+**One later decision changes nothing below, but contradicts §2.2, and is recorded here so the contradiction is visible.**
+
+> **Open-core business model (2026-10-03).** A business decision, recorded in [`enterpenuership/003-business-model-canvas.md`](./enterpenuership/003-business-model-canvas.md) §5: the command-line tool and its engine stay free and open source, and revenue is planned from a **paid hosted review service**. That is what §2.2 calls "out of scope entirely" and §2.3.2 lists as a hosted GitHub App.
+>
+> **No requirement, identifier or version is added by it.** v1–v3 remain exactly as catalogued, and the hosted service has no specification, no version and no ADR. Taking it up is a design change, not an addition: it would be the first surface that operates a server and holds server-side state, which §2.2 here, [`agentic-code-review-srs-v1.md`](../agentic-code-review-srs-v1.md) §2.1 and the reasoning of [ADR-0005](../adr/0005-cross-run-memory-as-hidden-comment-ledger.md) ("The product is deliberately **not** a hosted service") all rule out today.
+>
+> ⚠️ **[`agentic-code-review-srs-ar.md`](./agentic-code-review-srs-ar.md) does not reflect this note either.**
+
 ---
 
 ## 1. Introduction

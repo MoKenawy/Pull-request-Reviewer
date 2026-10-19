@@ -75,13 +75,14 @@ def _home(env: Mapping[str, str]) -> Path:
     return Path(home) if home else Path.home()
 
 
-def find_credential(sources: CredentialSources, repo_root: Path) -> Credential | CredentialProblem:
+def find_credential(sources: CredentialSources, repo_root: Path | None) -> Credential | CredentialProblem:
+    """``repo_root`` is None when the change does not come from a repository on this machine (a pull request)."""
     if sources.from_env is not None:
         return sources.from_env
 
     path = sources.user_file
     if path.is_file():
-        if _is_within(path, repo_root):
+        if repo_root is not None and _is_within(path, repo_root):
             return CredentialProblem(
                 f"The user-level credential file {path} is inside the repository at {repo_root}.\n"
                 "A credential is never read from a file in the repository. Move it, or set "

@@ -80,3 +80,13 @@ def test_missing_names_both_places(tmp_path: Path) -> None:
 def test_credential_never_prints_its_value() -> None:
     credential = Credential(SECRET, source="environment", location=ENV_VAR)
     assert SECRET not in repr(credential) and SECRET not in str(credential) and SECRET not in f"{credential}"
+
+
+def test_with_no_local_repository_the_user_file_is_read(tmp_path: Path) -> None:
+    # A pull request is reviewed without a repository on this machine: there is nothing the file could be inside.
+    env = {"APPDATA": str(tmp_path), "XDG_CONFIG_HOME": str(tmp_path)}
+    path = user_credential_path(env)
+    path.parent.mkdir(parents=True)
+    path.write_text(f"apiKey: {SECRET}\n", encoding="utf-8")
+    found = find_credential(credential_sources(env), None)
+    assert isinstance(found, Credential) and found.reveal() == SECRET

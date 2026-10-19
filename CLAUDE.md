@@ -4,26 +4,27 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Current state
 
-**Feature 001, the walking skeleton, is built** (User Story 1 complete; `specs/001-walking-skeleton/tasks.md` tracks the rest). `src/agentic_review/` has 41 Python modules — CLI, pipeline, and the CF-1/CF-4/CF-5/CF-6/CF-7/CF-9 core functions; CF-2, CF-3 and CF-8 are not built yet (features 004, 002, 003). 207 tests run offline in about 20 seconds, plus 5 import-linter structural contracts and a GitHub Actions CI matrix on Python 3.12/3.13, Linux and Windows.
+**Feature 001, the walking skeleton, is built** (User Story 1 complete; `specs/001-walking-skeleton/tasks.md` tracks the rest). `src/agentic_review/` has 47 Python modules — CLI, pipeline, and the CF-1/CF-4/CF-5/CF-6/CF-7/CF-9 core functions; CF-2, CF-3 and CF-8 are not built yet (features 004, 002, 003). 424 tests run offline in under a minute, plus 6 import-linter structural contracts and a GitHub Actions CI matrix on Python 3.12/3.13, Linux and Windows.
 
 **Commands** (Python ≥3.12, via [uv](https://docs.astral.sh/uv/)):
 
 ```
 uv sync                                          # install
 uv run pytest                                    # full suite; -k or a path to narrow
-uv run lint-imports                              # the 5 structural contracts; what CI runs
+uv run lint-imports                              # the 6 structural contracts; what CI runs
 uv run --env-file .env agentic-review review      # run the tool itself
 ```
 
-On Windows, `uv run lint-imports` can fail with *"uv trampoline failed to canonicalize script path."* Fall back to:
+On Windows, `uv run lint-imports` and `uv run pytest` can fail with *"uv trampoline failed to canonicalize script path."* Fall back to:
 
 ```
 uv run python -c "from importlinter.cli import lint_imports_command; lint_imports_command()"
+uv run python -m pytest
 ```
 
 `Docs/operation_guidelines.md` is the full how-to-install/run/troubleshoot guide; it describes what the code does today, not the specification.
 
-The work is an **agentic code reviewer**: a local CLI that reviews a TypeScript/JavaScript change set by parsing it, running the repository's own tests and type-check, and passing that evidence to a single model pass that emits schema-validated findings. Only the `review` command is implemented; `regression` and `schema` are not built.
+The work is an **agentic code reviewer**: a local CLI that reviews a TypeScript/JavaScript change set by parsing it, running the repository's own tests and type-check, and passing that evidence to a single model pass that emits schema-validated findings. The `review` and `render` commands are implemented; `regression` and `schema` are not built.
 
 ## Document authority — read this before editing any doc
 
@@ -48,7 +49,7 @@ The split between the SRS and the stack document is deliberate: the SRS says *wh
 
 - **Requirement identifiers are stable and are never renumbered.** A requirement keeps its `FR-x.y` identifier across versions; a version tag says when it applies. Renumbering silently breaks cross-references in the ADRs, the harness design, and the traceability table (SRS Appendix B). Requirements introduced by the v1 baseline are marked `(new in v1)`. **In `src/` and `tests/`, a bare `FR-` identifier is always an SRS (`FR-x.y`) identifier.** A feature-local `FR-0NN` identifier (from a `specs/NNN-*/` spec) is only ever written qualified, e.g. `spec 001 FR-009` — never bare outside its own feature directory.
 - **Must / Should.** Must = required for the version to be complete. Should = included if time allows; its absence does not block release.
-- **ADRs are append-only.** Never edit a decision to reflect a change of mind — write a new ADR that supersedes it, and update the status table in `Docs/adr/README.md`. Status values: Proposed / Accepted / Superseded / Deprecated. ADR-0006, ADR-0007, ADR-0008 and ADR-0009 are Accepted; the other five (0001–0005) are Proposed.
+- **ADRs are append-only.** Never edit a decision to reflect a change of mind — write a new ADR that supersedes it, and update the status table in `Docs/adr/README.md`. Status values: Proposed / Accepted / Superseded / Deprecated. ADR-0006 through ADR-0011 are Accepted; the other five (0001–0005) are Proposed.
 - **Read ADR-0006 first, then ADR-0007, then ADR-0008 and ADR-0009.** 0006 was decided late and rescoped four earlier records (0001–0003, 0005), which were written assuming a GitHub Action was the only delivery surface. 0007, 0008 and 0009 are the records naming an implementation technology: 0007 amends one consequence of 0006 (distribution: PyPI, not npm); 0008 settles what the tool-call ceiling counts and how a review ends; 0009 declares the pipeline as a LangGraph graph and narrows FR-5.8 accordingly (see below).
 - Docs cross-link with relative paths and use mermaid diagrams throughout. Moving or renaming a file under `Docs/` requires fixing the inbound links in `Docs/README.md`, `Docs/adr/README.md`, and the SRS front matter.
 - `Docs/Draft/agentic-code-review-srs-ar.md` is an Arabic translation of the catalogue. Changes to the catalogue leave it stale; say so rather than silently diverging.
@@ -83,6 +84,7 @@ These are the ones that make v2 and v3 additions rather than rewrites. Treat a c
 - **FR-11.2** — a review is produced under *every* failure mode (checks unrunnable, context over budget, provider error, budget exhausted), reporting the degradation. A silent failure is indistinguishable from a clean review.
 - **FR-5.8** *(amended in v1.2 by ADR-0009, renamed in v1.3 by ADR-0010)* — the agent framework is confined to the **`agents/` package**. **No package under `core/` may import LangGraph, LangChain or openai**, and every core function stays callable as an ordinary function without them; the pipeline graph itself must stay acyclic, with CF-6 the only step where a cycle may occur. This is what keeps ADR-0001's "our code owns orchestration" true now that a framework is in the repository.
 - **FR-2.6g** — the resolver sidecar's absence degrades and reports; it never fails an invocation. An optional prerequisite must not quietly become a required one.
+- **FR-10.3d** *(new in v1.5, ADR-0011)* — a pull request is a stranger's code. Nothing from it is executed (no checkout, no checks) and no configuration is read from it, because the config file names the provider URL the API key is sent to. Everything pull-request-specific stays behind `PullRequestSource` in `core/changeset/pull_request.py`. **Its git-based implementation is interim**: it is to be replaced by one backed by the official GitHub MCP server (`github/github-mcp-server`), which needs its own ADR (a GitHub token, and an MCP client that may not live under `core/`). Do not grow the hand-written reader.
 
 `Docs/agentic-code-review-srs-v1.md` §6 lists sixteen acceptance criteria (AC-1…AC-16; AC-13/14 added in v1.1, AC-15/16 later). AC-5 and AC-7 are flagged as the ones to defend under schedule pressure; AC-8, AC-10 and AC-12 are the cheap structural checks on the constraints above. AC-10's import-contract wording was updated alongside FR-5.8 in v1.2.
 
@@ -94,7 +96,7 @@ Summary only — **`Docs/technical_stack.md` is the authority**, and carries the
 - **LangChain** for the provider interface, tool binding (FR-5.6a) and structured output (FR-5.6b); **LangGraph confined to `agents/`** (FR-5.8, amended v1.2 by ADR-0009, renamed v1.3 by ADR-0010) — every package under `core/` stays plain Python, callable without the framework. At ceiling zero the review step is a one-node graph, which is what makes FR-5.7's "configuration, not restructuring" literally true.
 - **A bundled Node resolver sidecar** answers depth-1 module resolution from the TypeScript compiler's own algorithm (FR-2.6f). Started at most once per invocation, shipped as package data, never fetched at review time. Node is a runtime prerequisite for authoritative depth 1 and **never** for installation — its absence degrades and reports (FR-2.6g, AC-12). The sidecar is private to CF-2; nothing outside it may know it exists.
 - **Pydantic** for the finding model, so the type, the JSON Schema (FR-0.4) and the `emit_finding` tool schema come from one definition — SRS §5 requires "one definition, not two".
-- **Typer + Rich** for CF-7, **pytest** for the CF-8 regression corpus.
+- **Typer + Rich** for CF-7, with **Jinja2** for the HTML rendering (FR-10.4d) — confined to `core/output/` by import contract 8, and its template is the wheel's first package-data file, read through `importlib.resources`. **pytest** for the CF-8 regression corpus.
 - Checks run as **subprocesses through the reviewed project's own toolchain** (FR-4.7). The harness never imports the project's dependencies, and never asks the project to install its own.
 
 Config lives in `.agentic-review.yml` at the repository root, with documented defaults and loud (never silent) validation failure. The provider credential comes from the environment or user-level config — never hard-coded, never committed. Default provider is the NVIDIA NIM free tier, reached through an OpenAI-compatible client so a swap is a base URL and a model name.

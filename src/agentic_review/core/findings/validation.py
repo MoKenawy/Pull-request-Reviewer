@@ -21,10 +21,14 @@ from agentic_review.core.findings.schema import TOOL_NAME
 
 _EVIDENCE_KINDS = {"check", "context", "diff", "unverified"}
 
+RULE_ID_DISCARDED_NOTE = "ruleId discarded: no pattern rules are loaded in this review"
+"""Fixed by contracts/emit-finding.md "Discarded fields". Edited there first, never only here."""
+
 
 @dataclass(frozen=True)
 class Accepted:
     draft: FindingDraft
+    note: str | None = None  # what validation changed in the draft, for the observation; None when nothing
 
 
 @dataclass(frozen=True)
@@ -43,10 +47,17 @@ def validate_call(name: str, args: object, material: RunMaterial) -> Accepted | 
         draft = FindingDraft.model_validate(args)
     except ValidationError as error:
         return Rejected("; ".join(_render_shape_error(item) for item in error.errors()))
+    note = None
+    if draft.rule_id is not None and not material.rule_ids:
+        # With no rules loaded there is no rule the model could have meant, so the only correction is to leave the
+        # field out — which is done here rather than spent on the one repair turn. Unlike a dangling evidence
+        # reference (gap D-1), the label backs no claim: without it the finding says exactly what it said before.
+        draft = draft.model_copy(update={"rule_id": None})
+        note = RULE_ID_DISCARDED_NOTE
     problems = _reference_problems(draft, material)
     if problems:
         return Rejected("; ".join(problems))
-    return Accepted(draft)
+    return Accepted(draft, note)
 
 
 def _render_shape_error(error: Any) -> str:
@@ -102,10 +113,8 @@ def _reference_problems(draft: FindingDraft, material: RunMaterial) -> list[str]
         ):
             problems.append(f"evidence: '{evidence.file}' lines {evidence.start_line}–{evidence.end_line} were not in the context given")
 
-    if draft.rule_id is not None:
-        if not material.rule_ids:
-            problems.append("ruleId: no pattern rules are loaded in this review; omit ruleId")
-        elif draft.rule_id not in material.rule_ids:
-            problems.append(f"ruleId: '{draft.rule_id}' is not a loaded rule")
+    # Only reachable with rules loaded: validate_call has already discarded a ruleId when there are none.
+    if draft.rule_id is not None and draft.rule_id not in material.rule_ids:
+        problems.append(f"ruleId: '{draft.rule_id}' is not a loaded rule")
 
     return problems

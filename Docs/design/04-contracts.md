@@ -185,7 +185,9 @@ The tool schema **is** the finding model, generated from it — not written besi
 | Hunk out of range | `evidence.hunkIndex: '<file>' has hunks 0–<k>` |
 | Check evidence, no checks recorded | `evidence.kind: no checks were run in this review; cite the diff or mark the finding unverified` |
 | Context evidence, no context included | `evidence.kind: no related context was gathered in this review; cite the diff or mark the finding unverified` |
-| Rule not loaded | `ruleId: no pattern rules are loaded in this review; omit ruleId` |
+| Rule named that is not among the loaded rules | `ruleId: '<id>' is not a loaded rule` |
+
+**Revised 2026-10-09 — a `ruleId` with no rules loaded is discarded, not rejected** ([spec 001](../../specs/001-walking-skeleton/contracts/emit-finding.md#discarded-fields)). The finding is accepted without it and the `ok` observation says so. Unlike the rows above, the label backs no claim in the finding, and with no rules loaded there is nothing a repair turn could correct it to.
 
 ### 4.2 `ToolObservation` — what comes back
 
@@ -318,6 +320,7 @@ One artifact, one versioned schema (FR-8.2b). The finding model is **nested insi
 ```
 agentic-review review [OPTIONS]
 agentic-review regression [OPTIONS]
+agentic-review render REPORT.json --html PATH   # re-render a saved report
 agentic-review schema          # print the JSON schema and exit
 ```
 
@@ -325,10 +328,14 @@ agentic-review schema          # print the JSON schema and exit
 
 | Flag | Default | |
 |---|---|---|
-| `--scope {working-tree,staged,range}` | `working-tree` | FR-10.3a. The default is stated in the output and flagged `wasDefaulted` |
-| `--base REF` | — | Required for `range` |
+| `--scope {working-tree,staged,range,commit}` | `working-tree` | FR-10.3a. The default is stated in the output and flagged `wasDefaulted` |
+| `--base REF` | — | Required for `range`. With `--pr`, the branch the pull request targets (default: the repository's default branch) |
+| `--head REF` | `HEAD` | `range` only: the ref to review instead of the current head |
+| `--pr URL` | — | Selects the `pull-request` scope on its own: a public GitHub pull request, read without a checkout (FR-10.3d, ADR-0011). Needs no local repository. Rejected with `--scope` or `--head` |
+| `--commit REF` | — | Selects the `commit` scope on its own; required for it, and rejected with any other scope |
 | `--depth N` | `1` | A request, not a guarantee. `--depth 2` reports `no-index` and completes (AC-8) |
 | `--json [PATH]` | off | No path ⇒ stdout. FR-10.4b |
+| `--html PATH` | off | FR-10.4d. Writes the HTML rendering of the same report. A path is required — there is no stdout form, because a self-contained document is not something to pipe |
 | `--config PATH` | `./.agentic-review.yml` | |
 | `--no-checks` | off | Skips execution, recorded as `skipped` — never as passed |
 | `--ceiling N` | from config | |
@@ -363,7 +370,7 @@ The **verdict is computed in core**; the CLI only maps it to an integer. If the 
 ```yaml
 schemaVersion: 1
 
-scope: working-tree                  # working-tree | staged | range
+scope: working-tree                  # working-tree | staged | range (commit and pull-request are flags only)
 exclude:                             # FR-3.5 - MERGED with the documented defaults
   - "**/*.generated.ts"
 

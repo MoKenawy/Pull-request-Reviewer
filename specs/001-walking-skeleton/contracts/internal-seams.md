@@ -17,6 +17,9 @@ class ReviewRequest:
     cwd: Path
     scope: ScopeKind | None          # None = not given on the command line
     base: str | None
+    head: str | None                 # --head REF; range only, None = HEAD
+    pr: str | None                   # --pr URL; selects the pull-request scope by itself
+    commit: str | None               # --commit REF; selects the commit scope by itself (User Story 4)
     config_path: Path | None
     ceiling: int | None
 
@@ -36,6 +39,7 @@ def run_review(
     clock: Callable[[], float] = time.monotonic,
     now: Callable[[], datetime] = utc_now,
     review_port: ReviewPort | None = None,   # None = build the default through agents/review_port.py
+    pull_requests: PullRequestSource | None = None,   # None = GitPullRequestSource(); see §2a
 ) -> PreflightFailure | Reviewed: ...
 ```
 
@@ -55,6 +59,37 @@ def summarise(change_set: ChangeSet) -> ChangeSummary: ...
 
 The **only** package that runs git (R-3). `ChangeSet` is what v3's Action adapter will produce by other means
 (FR-10.3c), so nothing downstream may reach past it to git.
+
+```python
+def diff_branches(repo_root: Path, base: str, head: str, exclude: Sequence[str]) -> BranchDiff: ...
+def have_merge_base(repo_root: Path, base: str, head: str) -> bool: ...
+```
+
+`diff_branches` is `git diff base...head` as a function: files, exclusions, and the two commits compared. The
+`range` scope calls it on the local repository; the pull-request scope calls it on a repository it fetched.
+
+## 2a · Pull-request source: the seam a better reader replaces · `core/changeset/pull_request.py`
+
+```python
+def parse_pull_request_url(url: str) -> PullRequestRef | None: ...   # https://github.com/<owner>/<repo>/pull/<n>
+
+class PullRequestSource(Protocol):
+    def open(self, pr: PullRequestRef, *, base: str | None) -> OpenedPullRequest: ...   # raises PullRequestError
+
+class OpenedPullRequest(Protocol):
+    def change_set(self, exclude: Sequence[str]) -> ChangeSet: ...
+    def line_counts(self, change_set: ChangeSet) -> Mapping[str, int]: ...
+    def close(self) -> None: ...
+```
+
+`open` is called by preflight (check 5) and may fail; after it, nothing may. `change_set` and `line_counts` are
+called by the change-set stage; `close` by `run_review`, in a `finally`. The source reaches the pipeline as run
+context (`PipelineDeps.pull_requests`), the way the review port's factory does.
+
+**What may cross this seam: a `ChangeSet` and line counts. Nothing else.** No path, no remote name, no ref that only
+one implementation would have. `GitPullRequestSource` — a blobless, no-checkout clone, then `diff_branches` — is the
+only implementation and is **interim**: one backed by the GitHub MCP server is expected to replace it (ADR-0011,
+R-25). `tests/integration/test_pull_request_scope.py` holds the seam with a source that never touches git.
 
 ## 3 · Assembly: the only budget owner · `core/assembly/`
 

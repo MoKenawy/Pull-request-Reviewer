@@ -173,8 +173,8 @@ flowchart LR
 
 | Field | Type | Notes |
 |---|---|---|
-| `kind` | `working-tree \| staged \| range` | The three FR-10.3a options |
-| `base_ref` / `head_ref` | str? | Populated for `range` |
+| `kind` | `working-tree \| staged \| range \| commit \| pull-request` | The five FR-10.3a options (`commit` added in SRS v1.4, `pull-request` in v1.5) |
+| `base_ref` / `head_ref` | str? | Both populated for `range` (`head_ref` is `HEAD` unless the user named another) and for `pull-request` (the base branch's name, and `refs/pull/<n>/head`). For `commit`, `head_ref` is the commit as the user named it and `base_ref` stays empty — the parent is derived, not named |
 | `was_defaulted` | bool | True when the user named no scope. FR-10.3b requires *stating* the resolved scope; a reader needs to know it was inferred. |
 | `description` | str | One line for FR-8.1b: `"uncommitted changes in the working tree (default)"` |
 
@@ -189,6 +189,29 @@ flowchart LR
 > | `range` | merge-base(`base`, `HEAD`) ↔ `HEAD` — `base...HEAD` | What the branch changed since it left `base`: the comparison a pull request makes, and so the seam the v3 adapter substitutes (FR-10.3c). Two-dot would review commits merged into `base` after the branch point as the developer's work |
 >
 > A repository with no commits compares `working-tree` and `staged` against git's empty tree. `range` against an unborn `HEAD` cannot start.
+
+> **Revised 2026-10-09 — the `commit` scope** (SRS v1.4, FR-10.3a; [spec 001](../../specs/001-walking-skeleton/plan.md#design-gaps-raised-by-this-plan) D-11).
+>
+> | `kind` | Compares | Why |
+> |---|---|---|
+> | `commit` | first parent of the named commit ↔ the named commit; git's empty tree when it is a root commit | What that one commit introduced. The working tree and the index play no part, so uncommitted edits are never reviewed under this scope. A merge commit is compared with its **first** parent: what the merge brought into the branch it was merged into |
+>
+> The named commit must exist, or the run cannot start. Any ref that resolves to a commit is accepted — an ID, a branch, a tag, `HEAD~2`.
+>
+> **Checks are not run under `commit`** (SRS FR-4.8, decided 2026-10-09; D-12). CF-3 reads the working tree, which need not hold the reviewed commit, so each `CheckResult` is `status: skipped` with a `reason` saying checks do not apply to this scope — never `passed`. Feature 002 builds this.
+>
+> **Revised 2026-10-09 — the `pull-request` scope, and a nameable head for `range`** (SRS v1.5, FR-10.3a/d; [ADR-0011](../adr/0011-cli-reads-a-public-pull-request.md); spec 001 D-13).
+>
+> | `kind` | Compares | Why |
+> |---|---|---|
+> | `range` | merge-base(`base`, `head`) ↔ `head` — `base...head`, with `head` defaulting to `HEAD` | Reviewing a branch should not require checking it out |
+> | `pull-request` | merge-base(base branch, pull-request head) ↔ pull-request head — the same three-dot comparison, made in a temporary clone | The comparison a pull request shows. The base is the repository's default branch unless the user names another, because git alone cannot know which branch a pull request targets |
+>
+> A pull request is read **without a working tree**, so nothing from it can run, and no configuration is taken from it (FR-10.3d). Checks are not run under it (FR-4.8). A pull request that cannot be read stops the run at preflight.
+>
+> **How it is fetched is behind one interface** (`PullRequestSource`, `core/changeset/`) and is expected to change: the git-based reader is interim, pending one backed by the GitHub MCP server (ADR-0011). Nothing outside `core/changeset/` may depend on how the pull request was obtained — `ChangeSet` is the whole of what crosses.
+>
+> **Still open** (D-12): the same mismatch exists for `staged`, and for `range` with uncommitted edits, where checks *are* expected; and CF-2 has to decide where it reads related context from under `commit`. Features 002 and 004 settle these in their own specs.
 
 **`ChangedFile`**
 
@@ -365,7 +388,7 @@ The `unverified` arm is the point. It makes an unevidenced finding **declare its
 > | `evidence` `diff` | A reviewed file, and an existing hunk when `hunk_index` is given |
 > | `evidence` `check` | A check that was recorded in this run |
 > | `evidence` `context` | A context unit that was included in this run |
-> | `rule_id` | A rule that was loaded in this run |
+> | `rule_id` | A rule that was loaded in this run — when any were. With none loaded it is discarded and the finding kept *(revised 2026-10-09)* |
 >
 > The run's material (reviewed files and their line and hunk counts, check IDs, included context, loaded rule IDs) is handed to validation alongside the review context. The exact rejection reasons are in [`04-contracts.md`](./04-contracts.md) §4.1.
 

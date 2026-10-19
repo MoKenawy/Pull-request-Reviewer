@@ -29,7 +29,14 @@ def _block_network(monkeypatch: pytest.MonkeyPatch) -> None:
 @pytest.fixture(autouse=True)
 def _isolate_environment(monkeypatch: pytest.MonkeyPatch, tmp_path_factory: pytest.TempPathFactory) -> None:
     home = tmp_path_factory.mktemp("userhome")
-    for name in ("AGENTIC_REVIEW_API_KEY", "AGENTIC_REVIEW_DEBUG", "XDG_CONFIG_HOME", "NO_COLOR"):
+    for name in (
+        "AGENTIC_REVIEW_API_KEY",
+        "AGENTIC_REVIEW_DEBUG",
+        "XDG_CONFIG_HOME",
+        "NO_COLOR",
+        "LANGFUSE_PUBLIC_KEY",  # with these set, the system prompt would be fetched from Langfuse
+        "LANGFUSE_SECRET_KEY",
+    ):
         monkeypatch.delenv(name, raising=False)
     monkeypatch.setenv("APPDATA", str(home / "AppData" / "Roaming"))
     monkeypatch.setenv("XDG_CONFIG_HOME", str(home / ".config"))
@@ -38,6 +45,20 @@ def _isolate_environment(monkeypatch: pytest.MonkeyPatch, tmp_path_factory: pyte
     # Fixture repositories must not inherit the machine's git configuration (autocrlf, hooks, signing).
     monkeypatch.setenv("GIT_CONFIG_NOSYSTEM", "1")
     monkeypatch.setenv("GIT_CONFIG_GLOBAL", str(home / ".gitconfig-none"))
+
+
+@pytest.fixture(scope="session")
+def pull_request_remote(tmp_path_factory: pytest.TempPathFactory) -> object:
+    """One read-only stand-in for a GitHub repository with an open pull request, shared by every test that clones it.
+
+    Session-scoped because building it costs a dozen git commands; nothing writes to it after this.
+    """
+    from tests.support.pull_request_remote import build_pull_request_remote
+
+    with pytest.MonkeyPatch.context() as patch:  # the same isolation `_isolate_environment` gives each test
+        patch.setenv("GIT_CONFIG_NOSYSTEM", "1")
+        patch.setenv("GIT_CONFIG_GLOBAL", str(tmp_path_factory.mktemp("remotehome") / ".gitconfig-none"))
+        return build_pull_request_remote(tmp_path_factory.mktemp("upstream") / "widgets")
 
 
 @pytest.fixture

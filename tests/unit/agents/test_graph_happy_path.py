@@ -57,6 +57,24 @@ def test_two_valid_calls_become_two_findings(make_port: PortFactory) -> None:
     ]
 
 
+def test_invented_rule_id_is_discarded_and_the_finding_kept(make_port: PortFactory) -> None:
+    """With no rules loaded a ruleId costs neither the finding nor the repair turn; the observation says so."""
+    port, model = make_port([ai_reply([finding_call(ruleId="uninstall-cleanup-link-target")])])
+    outcome = port.review(CONTEXT)
+
+    assert model.call_count == 1 and outcome.repair_turns == 0
+    assert [f.rule_id for f in outcome.findings] == [None]
+    assert outcome.completion_status == "emitted" and outcome.degradations == ()
+    observations = [json.loads(m.content) for m in port.last_transcript if isinstance(m, ToolMessage)]
+    assert observations == [
+        {
+            "status": "ok",
+            "reason": None,
+            "content": "accepted as f-1; ruleId discarded: no pattern rules are loaded in this review",
+        }
+    ]
+
+
 def test_prose_is_discarded_and_no_call_is_recorded(make_port: PortFactory) -> None:
     prose = 'I found one issue: {"file": "src/app.ts", "startLine": 1, "endLine": 1, "severity": "blocking"}'
     port, _ = make_port([ai_reply(content=prose)])

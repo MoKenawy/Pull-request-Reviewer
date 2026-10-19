@@ -10,16 +10,21 @@ The other side of this contract is **the model**, which cannot be changed togeth
 ## The tool
 
 - **Name**: `emit_finding`
+- **Declaration**: `emit_finding` in `agents/review_port.py`, a LangChain `@tool` bound with
+  `chat_model.bind_tools([emit_finding])`. Its body is never executed: the review graph's `validate_calls` node answers
+  every call, because validation needs the run's material. *(Changed 2026-09-24 from a hand-built tool dict.)*
 - **Description**: as `TOOL_DESCRIPTION` in `core/findings/schema.py`. It states that one call records one specific
-  problem at one location, that the call is the only way a finding is recorded and prose is discarded unread, and that
-  every call is validated against the change under review, so a rejected call records nothing. *(Reworded during
-  implementation, 2026-09-17: the description and the per-field descriptions are what the provider reads, and the
-  original one sentence left the model to guess the rest. Unmeasured — see the note at the end.)*
+  problem at one location, that several problems mean several calls in the same reply, that the call is the only way a
+  finding is recorded and prose is discarded unread, and that every call is validated on its own against the change
+  under review, so a rejected call records nothing and does not affect the others. It ends with one example call.
+  *(Reworded during implementation, 2026-09-17: the description and the per-field descriptions are what the provider
+  reads, and the original one sentence left the model to guess the rest. Unmeasured — see the note at the end.)*
 - **Parameters**: **generated** from `FindingDraft` (see [data-model.md §3](../data-model.md#3--cf-5--findings)),
-  with `$ref`s inlined (R-11). Each field and each evidence arm also carries a `description` generated from the model,
+  with `$ref`s inlined (R-11), and passed to `@tool` as a JSON-schema `args_schema` — passing `FindingDraft` itself
+  would send snake_case names. Each field and each evidence arm also carries a `description` generated from the model,
   so the field rules the model must follow (line numbers in the new version, the severity rubric, the category list,
-  `ruleId` left unset) reach it with the schema rather than only in the prompt. Types, required fields and enums equal
-  04 §4.1:
+  the evidence kinds, `ruleId` left unset) reach it **only** with the tool, not in the system prompt *(since
+  2026-09-24; the prompt previously repeated them)*. Types, required fields and enums equal 04 §4.1:
 
 ```jsonc
 {
@@ -48,7 +53,8 @@ The other side of this contract is **the model**, which cannot be changed togeth
 *(The `oneOf` arms are shown compressed. The generated schema carries full object schemas with
 `additionalProperties: false` and a `kind` discriminator.)*
 
-**Test obligation**: the parameters sent to the provider equal `inline_refs(FindingDraft.model_json_schema(by_alias=True))`.
+**Test obligation**: the parameters sent to the provider equal `inline_refs(FindingDraft.model_json_schema(by_alias=True))`,
+less the top-level `description`, which LangChain's tool conversion drops in favour of the tool description.
 A hand-edited schema fails the test. Descriptions are therefore edited on the Pydantic model, never in the schema.
 
 > **The wording of the description and of the instructions is unmeasured** (Principle VI). Feature 003's corpus is what
@@ -74,7 +80,8 @@ Every tool call, valid or not, receives exactly one `ToolMessage` whose content 
 {"status": "denied", "reason": "tool-call ceiling of 25 reached; this call was not processed", "content": null}
 ```
 
-`reason` is required whenever `status != "ok"`. When several fields fail, the reasons are joined with `; `, and
+`reason` is required whenever `status != "ok"`. An `ok` observation's `content` may carry a note after the finding id,
+when validation discarded a field (see [Discarded fields](#discarded-fields)). When several fields fail, the reasons are joined with `; `, and
 each is prefixed with its dotted JSON field path.
 
 ## Rejection reasons
@@ -93,7 +100,33 @@ fixed forms, so the model can act on them and tests can assert them:
 | Hunk out of range | `evidence.hunkIndex: '<file>' has hunks 0–<k>` |
 | Check evidence | `evidence.kind: no checks were run in this review; cite the diff or mark the finding unverified` |
 | Context evidence | `evidence.kind: no related context was gathered in this review; cite the diff or mark the finding unverified` |
-| Rule named | `ruleId: no pattern rules are loaded in this review; omit ruleId` |
+| Rule named that is not loaded, with rules loaded *(not reachable in 001)* | `ruleId: '<id>' is not a loaded rule` |
+
+## Discarded fields
+
+*(Changed 2026-10-09. Until then a `ruleId` was a rejection, `ruleId: no pattern rules are loaded in this review; omit
+ruleId`.)*
+
+A `ruleId` sent while **no** pattern rules are loaded is **discarded, and the finding is accepted without it** — it is
+not a rejection. The observation says what was done:
+
+```jsonc
+{"status": "ok", "reason": null, "content": "accepted as f-1; ruleId discarded: no pattern rules are loaded in this review"}
+```
+
+Why this one field is treated differently from every row above:
+
+- **Nothing in the finding depends on it.** A dangling evidence reference makes an unevidenced finding look evidenced
+  (gap D-1), so it must be rejected. A rule label backs no claim: with it removed, the file, lines, rationale and
+  evidence are exactly what the model sent.
+- **There is nothing to correct it to.** With no rules loaded the only valid correction is to leave the field out,
+  which the system can do itself, deterministically. Spending the one repair turn on it cost a whole review in
+  practice: the model sent one well-formed finding with an invented `ruleId`, answered the repair turn in prose, and
+  the run ended with no finding and no judgement.
+- **A dangling label never reaches the report** either way, so FR-6.2a is unaffected.
+
+With rules loaded (feature 003) an unknown `ruleId` **is** still rejected, as in the table above: there the model may
+have meant a real rule, and the repair turn lets it name the right one.
 
 ## The repair turn (FR-016 / FR-5.6c)
 

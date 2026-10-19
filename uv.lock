@@ -13,6 +13,7 @@ source = { editable = "." }
 dependencies = [
     { name = "grandalf" },
     { name = "groq" },
+    { name = "jinja2" },
     { name = "jupyter" },
     { name = "langchain" },
     { name = "langchain-core" },
@@ -38,6 +39,7 @@ dev = [
 requires-dist = [
     { name = "grandalf", specifier = ">=0.8" },
     { name = "groq", specifier = ">=1.7.0" },
+    { name = "jinja2", specifier = ">=3.1" },
     { name = "jupyter", specifier = ">=1.1.1" },
     { name = "langchain", specifier = ">=1.4.1" },
     { name = "langchain-core" },

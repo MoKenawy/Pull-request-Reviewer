@@ -111,8 +111,31 @@ def test_context_evidence_is_rejected_when_no_context_was_gathered() -> None:
     )
 
 
-def test_rule_id_is_rejected_when_no_rules_are_loaded() -> None:
-    assert _reason(finding_args(ruleId="R-001")) == "ruleId: no pattern rules are loaded in this review; omit ruleId"
+def test_rule_id_is_discarded_when_no_rules_are_loaded() -> None:
+    """An invented rule label must not cost the finding: there is no loaded rule a repair turn could correct it to."""
+    result = validate_call("emit_finding", finding_args(ruleId="R-001"), MATERIAL)
+    assert isinstance(result, Accepted)
+    assert result.draft.rule_id is None
+    assert result.note == "ruleId discarded: no pattern rules are loaded in this review"
+
+
+def test_accepted_call_without_a_rule_id_carries_no_note() -> None:
+    result = validate_call("emit_finding", finding_args(), MATERIAL)
+    assert isinstance(result, Accepted) and result.note is None
+
+
+def test_discarded_rule_id_is_not_among_the_reasons_of_a_rejected_call() -> None:
+    assert _reason(finding_args(ruleId="R-001", startLine=1, endLine=41)) == (
+        "endLine: 41 is past the end of 'src/app.ts' (40 lines)"
+    )
+
+
+def test_unknown_rule_id_is_rejected_when_rules_are_loaded() -> None:
+    material = RunMaterial(reviewed_files=MATERIAL.reviewed_files, rule_ids=frozenset({"R-001"}))
+    result = validate_call("emit_finding", finding_args(ruleId="R-002"), material)
+    assert isinstance(result, Rejected) and result.reason == "ruleId: 'R-002' is not a loaded rule"
+    accepted = validate_call("emit_finding", finding_args(ruleId="R-001"), material)
+    assert isinstance(accepted, Accepted) and accepted.draft.rule_id == "R-001" and accepted.note is None
 
 
 @pytest.mark.parametrize("args", ["not an object", None, ["a"]])

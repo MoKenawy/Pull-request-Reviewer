@@ -65,11 +65,11 @@ Frozen dataclass. Derived, not stored: `reviewable_files` = files where `change_
 
 | Field | JSON | Type | Rule |
 |---|---|---|---|
-| `kind` | `kind` | `working-tree \| staged \| range` | FR-005 |
-| `base_ref` | `baseRef` | `str \| None` | Set if and only if `kind == range`, exactly as the user gave it |
-| `head_ref` | `headRef` | `str \| None` | `"HEAD"` if and only if `kind == range` |
+| `kind` | `kind` | `working-tree \| staged \| range \| commit \| pull-request` | FR-005 |
+| `base_ref` | `baseRef` | `str \| None` | For `range`, the base exactly as the user gave it. For `pull-request`, the **name** of the branch compared with (`main`) — the default branch, or the one `--base` named. `None` for `commit` (the parent is derived, not named) and for the other kinds |
+| `head_ref` | `headRef` | `str \| None` | For `range`, the ref given to `--head`, or `"HEAD"`. For `pull-request`, `refs/pull/<n>/head`. For `commit`, the ref given to `--commit`, exactly as given. Otherwise `None` |
 | `was_defaulted` | `wasDefaulted` | `bool` | True only when **neither** a flag **nor** the config file named a scope (FR-006) |
-| `description` | `description` | `str` | One line, for example `"uncommitted changes in the working tree (default) · 3 files"`; for a range it includes the abbreviated commit IDs |
+| `description` | `description` | `str` | One line, for example `"uncommitted changes in the working tree (default) · 3 files"`; for a range it includes the abbreviated commit IDs; for a commit, the abbreviated IDs of the commit and of the parent it was compared with, and whether it is a root or a merge commit; for a pull request, `owner/repo#n`, the base branch and whether it was the default, and the abbreviated IDs compared |
 
 ### `ChangedFile`
 
@@ -152,7 +152,11 @@ Applied after the shape is valid. Each failure yields a field-precise reason (se
 | `evidence.hunkIndex`, if present → `0 ≤ i < hunk count` of `evidence.file` | `evidence.hunkIndex` |
 | `evidence.kind == check` → `RunMaterial.check_ids` non-empty (empty in 001) | `evidence.kind` |
 | `evidence.kind == context` → `RunMaterial.context_ranges` non-empty (empty in 001) | `evidence.kind` |
-| `ruleId` present → it is in `RunMaterial.rule_ids` (empty in 001) | `ruleId` |
+| `ruleId` present and `RunMaterial.rule_ids` non-empty → it is one of them | `ruleId` |
+
+A `ruleId` sent while `RunMaterial.rule_ids` is **empty** (always, in 001) is not a failure: it is discarded and the
+finding is accepted without it *(changed 2026-10-09; see
+[contracts/emit-finding.md](./contracts/emit-finding.md#discarded-fields))*.
 
 ### `Finding` 📦 = `FindingDraft` + fields the system assigns
 
@@ -309,7 +313,7 @@ The full schema from 04 §7 is modelled, so a file written now stays valid later
 | Path | Type · default | Effect in 001 |
 |---|---|---|
 | `schemaVersion` | `Literal[1]` · `1` | Validated |
-| `scope` | `working-tree \| staged \| range` · `working-tree` | ✅ |
+| `scope` | `working-tree \| staged \| range` · `working-tree` | ✅ `commit` and `pull-request` are deliberately not values here: each is named per run, by `--commit REF` or `--pr URL` |
 | `exclude` | `list[str]` · `[]` | ✅ Added to the defaults (FR-008) |
 | `context.depth` | `int ≥ 0` · `1` | ⚪ ignored, reported |
 | `context.node` | `str` · `"node"` | ⚪ ignored, reported |

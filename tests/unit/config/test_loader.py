@@ -31,7 +31,7 @@ def test_per_field_merge(tmp_path: Path) -> None:
     loaded = load_settings(_write(tmp_path, "agent:\n  toolCallCeiling: 5\n"), explicit=False)
     assert loaded.settings.agent.tool_call_ceiling == 5
     assert loaded.settings.agent.model == DEFAULT_MODEL
-    assert loaded.settings.budget.max_tokens == 20000
+    assert loaded.settings.budget.max_tokens == 200000
 
 
 def test_scope_named_by_file_is_recorded(tmp_path: Path) -> None:

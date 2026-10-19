@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 120" width="600" height="120" role="img" aria-label="Agentic Code Review logo, prototype C: a magnifying lens over added and removed lines">
+  <title>Agentic Code Review — prototype C, "a lens on the change"</title>
+  <rect x="2" y="2" width="116" height="116" rx="22" fill="#f4f2ec" stroke="#15181d" stroke-width="4"/>
+  <rect x="22" y="28" width="50" height="9" rx="4.5" fill="#1d7a4c"/>
+  <rect x="22" y="46" width="64" height="9" rx="4.5" fill="#b4561a"/>
+  <rect x="22" y="64" width="38" height="9" rx="4.5" fill="#1d7a4c"/>
+  <circle cx="72" cy="68" r="21" fill="#f4f2ec" stroke="#15181d" stroke-width="8"/>
+  <path d="M88 84 L102 98" fill="none" stroke="#15181d" stroke-width="9" stroke-linecap="round"/>
+  <text x="148" y="75" font-family="'IBM Plex Sans', Arial, sans-serif" font-size="44" font-weight="600" fill="#15181d">Agentic Code Review</text>
+</svg>
