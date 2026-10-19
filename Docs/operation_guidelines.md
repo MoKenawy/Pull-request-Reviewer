@@ -158,14 +158,21 @@ uv run --env-file .env agentic-review review
 
 Run from **inside** that repository, and point uv at this project. The paths below are this machine's; adjust them.
 
+> **On Windows, write every path you hand to uv with forward slashes.** uv strips backslashes out of path
+> arguments, so `--env-file "D:\Projects\...\.env"` reaches it as `D:Projects....env` and the command fails before
+> the tool starts. Forward slashes are valid Windows paths, so `D:/Projects/.../.env` works everywhere. This
+> applies to `--project` and `--env-file`, and to the tool's own path arguments, `--config`, `--json` and `--html`.
+> [Section 8](#8-troubleshooting) has the error message, and why it is easy to mistake for a review that ran and
+> found nothing.
+
 ```powershell
-$AR = "D:\Projects\DEPI-industry-project\Pull request Reviewer"
+$AR = "D:/Projects/DEPI-industry-project/Pull-request-Reviewer"
 cd C:\path\to\some-typescript-repo
-uv run --project $AR --env-file "$AR\.env" agentic-review review
+uv run --project $AR --env-file "$AR/.env" agentic-review review
 ```
 
 ```bash
-AR="/d/Projects/DEPI-industry-project/Pull request Reviewer"
+AR="/d/Projects/DEPI-industry-project/Pull-request-Reviewer"
 cd /path/to/some-typescript-repo
 uv run --project "$AR" --env-file "$AR/.env" agentic-review review
 ```
@@ -185,7 +192,7 @@ uncommitted edits are not part of a range.
 ### Review a public pull request
 
 ```powershell
-uv run --project $AR --env-file "$AR\.env" agentic-review review --pr https://github.com/OWNER/REPO/pull/123
+uv run --project $AR --env-file "$AR/.env" agentic-review review --pr https://github.com/OWNER/REPO/pull/123
 ```
 
 It works from **any directory**; no local copy of the repository is needed.
@@ -213,10 +220,10 @@ unused variable. The change also contains an excluded build file, a Markdown fil
 new file, so every part of the summary shows up.
 
 ```powershell
-$AR = "D:\Projects\DEPI-industry-project\Pull request Reviewer"
-uv run --project $AR python "$AR\scripts\make_review_demo.py"     # creates ..\review-demo next to the project
-cd "$AR\..\review-demo"
-uv run --project $AR --env-file "$AR\.env" agentic-review review
+$AR = "D:/Projects/DEPI-industry-project/Pull-request-Reviewer"
+uv run --project $AR python "$AR/scripts/make_review_demo.py"     # creates ../review-demo next to the project
+cd "$AR/../review-demo"
+uv run --project $AR --env-file "$AR/.env" agentic-review review
 ```
 
 Compare the findings with `PLANTED_DEFECTS.md` in the demo repository. Rebuild it with `--force`, or put it elsewhere
@@ -241,7 +248,7 @@ export async function loadUser(id: string) {
 git add -A; git commit -qm init
 # plant a defect: without await, a rejected promise escapes the try/catch
 (Get-Content src\user.ts) -replace 'return await fetchUser', 'return fetchUser' | Set-Content -Encoding utf8 src\user.ts
-uv run --project $AR --env-file "$AR\.env" agentic-review review
+uv run --project $AR --env-file "$AR/.env" agentic-review review
 ```
 
 ### Produce a shareable report
@@ -533,6 +540,7 @@ the JSON.
 
 | You see | Cause | Fix |
 |---|---|---|
+| `error: No environment file found at: D:ProjectsDEPI-industry-project...` (**exit 2**, from uv, before the tool starts) | A path with backslashes was handed to uv, which strips them; the same happens to `--project`, `--config`, `--json` and `--html` | Use forward slashes: `--env-file "D:/Projects/.../.env"`. Beware that **uv's exit 2 is the same code the review tool uses for "no judgement"**, so this reads as a review that ran and produced nothing when in fact nothing ran. The giveaway is the path in the message with its separators gone |
 | `... is not inside a git repository.` (exit 3) | Run outside a repository | `cd` into the repository |
 | `git was not found on PATH` (exit 3) | git not installed or not on `PATH` | Install git |
 | `No provider credential was found. Looked in: ...` (exit 3) | No key in the environment or the user-level file | Section 3. With `.env`, remember `--env-file` |
