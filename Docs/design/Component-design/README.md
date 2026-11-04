@@ -27,7 +27,7 @@ The three levels refine one another. Each level keeps the one above it and adds 
 | 2 | Context gathering splits into **static context** and **runtime behaviour** |
 | 3 | Concrete sources inside each context kind, the components inside Review, and the reporter channels |
 
-### 1.1 Level 3, redrawn
+### 1.1 Level 3
 
 ```mermaid
 flowchart TB
