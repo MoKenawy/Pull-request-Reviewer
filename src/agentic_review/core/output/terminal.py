@@ -11,7 +11,7 @@ from rich.console import Console
 from rich.text import Text
 
 from agentic_review.core.findings.model import Finding
-from agentic_review.core.findings.report import ReviewReport
+from agentic_review.core.findings.report import RULES_NO_SCOPE_MATCH, ReviewReport
 from agentic_review.core.output.view import (
     NO_CHECKS_LINE,
     NO_CONTEXT_LINE,
@@ -52,6 +52,12 @@ def render_terminal(report: ReviewReport, console: Console) -> None:
             line(f"Excluded ({len(summary.excluded)}):")
             for excluded in summary.excluded:
                 line(f"  {excluded.path} ({excluded.rule})")
+        # The new reason needs no new rendering — it prints with its path like the other two. What it needs is a
+        # count, so a reviewer sees "no rule covered these" without opening the JSON (contracts/rule-scope.md §4).
+        no_rule = sum(1 for excluded in summary.excluded if excluded.rule == RULES_NO_SCOPE_MATCH)
+        if no_rule:
+            noun = "file" if no_rule == 1 else "files"
+            line(f"  of which {no_rule} {noun} no loaded review rule applies to.")
 
     line()
     line(NO_CHECKS_LINE, "dim")

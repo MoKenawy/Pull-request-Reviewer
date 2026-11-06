@@ -38,14 +38,15 @@ def test_a_loaded_report_renders_to_the_same_html() -> None:
 
 def test_an_unknown_schema_version_is_refused_naming_both_versions() -> None:
     with pytest.raises(ReportNotLoadable) as raised:
-        load_report(json.dumps(_document(schemaVersion="1.1")))
+        # A *future* version, not merely a different one: "1.1" is this build's own since feature 003.
+        load_report(json.dumps(_document(schemaVersion="2.0")))
     message = str(raised.value)
-    assert SCHEMA_VERSION in message and "1.1" in message
+    assert SCHEMA_VERSION in message and "2.0" in message
 
 
 def test_malformed_json_is_refused_naming_where_it_broke() -> None:
     with pytest.raises(ReportNotLoadable) as raised:
-        load_report('{"schemaVersion": "1.0",')
+        load_report('{"schemaVersion": "1.1",')
     message = str(raised.value)
     assert "line" in message and "column" in message
 

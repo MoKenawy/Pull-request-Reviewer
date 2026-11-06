@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from agentic_review.core.findings.schema import SCHEMA_VERSION
+
 import json
 from pathlib import Path
 
@@ -66,7 +68,7 @@ def test_render_on_a_missing_file_exits_three_naming_the_path(tmp_path: Path) ->
 
 def test_render_on_malformed_json_exits_three_and_writes_no_file(tmp_path: Path) -> None:
     bad = tmp_path / "bad.json"
-    bad.write_text('{"schemaVersion": "1.0",', encoding="utf-8")
+    bad.write_text('{"schemaVersion": "1.1",', encoding="utf-8")
     out = tmp_path / "r.html"
     result = CliRunner().invoke(app, ["render", str(bad), "--html", str(out)])
     assert result.exit_code == 3, result.output
@@ -75,12 +77,12 @@ def test_render_on_malformed_json_exits_three_and_writes_no_file(tmp_path: Path)
 
 def test_render_on_an_unknown_schema_version_exits_three_naming_both_versions(tmp_path: Path) -> None:
     document = json.loads(to_json(report()))
-    document["schemaVersion"] = "1.1"
+    document["schemaVersion"] = "2.0"
     future = tmp_path / "future.json"
     future.write_text(json.dumps(document), encoding="utf-8")
     result = CliRunner().invoke(app, ["render", str(future), "--html", str(tmp_path / "r.html")])
     assert result.exit_code == 3, result.output
-    assert "1.1" in result.stderr and "1.0" in result.stderr
+    assert "2.0" in result.stderr and SCHEMA_VERSION in result.stderr
 
 
 def test_render_on_a_directory_given_as_the_report_exits_three(tmp_path: Path) -> None:
