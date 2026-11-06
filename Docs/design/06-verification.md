@@ -9,7 +9,7 @@
 
 Two things:
 
-1. **Does every acceptance criterion have a mechanism?** Sixteen criteria, sixteen answers — or the design is not finished. *SRS v1.6 added AC-17 (the Mermaid report, FR-8.5); its mechanism is not designed yet, so this question is open again for that one criterion.*
+1. **Does every acceptance criterion have a mechanism?** Sixteen criteria, sixteen answers — or the design is not finished. *SRS v1.6 added AC-17 (the Mermaid report, FR-8.5), whose mechanism is not designed yet, and v1.8 added AC-18 (rule scope is review scope, FR-6.1a), whose mechanism is §3 below. The question is open again for AC-17 alone.*
 2. **What counts as a catch?** FR-6.2f requires a documented, line-independent rule. Writing it is design's job, and it is the single most consequential thing in this document, because the catch rate is the project's primary instrument.
 
 ---
@@ -82,15 +82,19 @@ tests/corpus/
             change.patch      # the change under review
         naming-nit-01/
         clean-refactor-01/    # is_clean: true
-    rules/                    # the five pattern rules (FR-6.3a)
+    rules/                    # corpus-local rule overrides only, if any
 ```
+
+> **Revised 2026-11-06 — where the shipped rules live.** The five rules FR-6.3a requires are **package data in `core/patterns/`**, as [`../technical_stack.md`](../technical_stack.md) §4 has it, not corpus fixtures: they ship with the tool, and the corpus measures the tool as shipped. This line previously read `# the five pattern rules (FR-6.3a)`, which put the library in two places.
 
 | Property | Requirement |
 |---|---|
-| ≥ 5 rules, each with a wrong example, a correct example, and ≥ 1 case | FR-6.3a |
+| ≥ 5 rules, each with a wrong example and a correct example | FR-6.3a *(a rule no longer needs its own case — amended in SRS v1.6; this row said "and ≥ 1 case" until 2026-11-06)* |
 | **Clean cases included** | FR-6.2f — otherwise precision is unmeasurable |
 | Runs as an ordinary test | AC-5 |
 | Depth and ceiling are parameters | FR-6.2d |
+| **Every `rule_id` in an expectation names a rule that exists** | Validated at corpus load, and a failure is loud. Condition 4 of §1.2 compares rule identifiers, so a typo in an expectation is a permanent miss that reads as a model failure |
+| **Every case's files are inside some rule's scope — clean cases included** | Rule scope decides what is reviewed at all ([`02-domain-model.md`](./02-domain-model.md) §3.8), so a fixture file no rule covers is never looked at. For a defect case that is a guaranteed miss dressed as a model failure; for a **clean** case it is a free pass that flatters the FP rate. The second is the dangerous one, because it improves the headline number while the tool gets worse — the same gaming FR-6.2f's clean cases exist to prevent |
 
 **The corpus is built at delivery step 3, before context quality and before prompt tuning** — that ordering is the specification's, and it is what turns every later change from an argument into a measurement.
 
@@ -117,8 +121,9 @@ tests/corpus/
 | **AC-15** | Every finding cites evidence or is marked unverified | `evidence` is **required** in the tool schema | M4 §4.1 |
 | **AC-16** | No tool call ⇒ distinguishable from a clean review | `no-tool-call` degradation | M2 §3.5 |
 | **AC-17** | The visual report is Mermaid that renders and shows the JSON report's findings *(new in SRS v1.6)* | **Not designed yet** — what the diagram shows is a design decision (FR-8.5) | — |
+| **AC-18** | A file no loaded rule applies to is excluded, said so distinguishably, and nothing left to review is not clean *(new in SRS v1.8)* | One run over a fixture whose changed file falls outside every rule's scope: assert the `no-rule-scope` reason in the stated scope, and a verdict that is not clean | [`02-domain-model.md`](./02-domain-model.md) §3.8 |
 
-**All sixteen designed so far are executable.** None requires reading the code to decide whether it passed. AC-17 has no mechanism yet.
+**All seventeen designed so far are executable.** None requires reading the code to decide whether it passed. AC-17 has no mechanism yet.
 
 ### The two cheapest, and the two most valuable
 
@@ -199,6 +204,6 @@ No module is unverified, and no criterion lacks a mechanism.
 | Catch rate is **never reported without** a false-positive figure | Recall alone is gamed by flagging everything |
 | Three repeats, median reported | A single sample from a non-deterministic model is an anecdote |
 | Four test layers; three run offline in seconds | Protects the iteration speed ADR-0006 was chosen for |
-| Sixteen criteria, sixteen mechanisms, all executable (AC-17, added in SRS v1.6, still needs one) | The design is checkable, not just describable |
+| Seventeen criteria, seventeen mechanisms, all executable (AC-17, added in SRS v1.6, still needs one) | The design is checkable, not just describable |
 
 **Open:** TBD-6's targets, and S-1's result.

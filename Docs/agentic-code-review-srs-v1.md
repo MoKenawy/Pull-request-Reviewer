@@ -1,6 +1,6 @@
 # Software Requirements Specification — Agentic Code Review v1
 
-**Status:** Baselined · **Version:** 1.7 · **Date:** 2026-10-27
+**Status:** Baselined · **Version:** 1.8 · **Date:** 2026-11-06
 **Scope:** Local command-line reviewer for TypeScript/JavaScript, plus the registry of requirements reserved for later versions
 **Audience:** Contributors building v1, reviewers verifying that a change meets it, and anyone planning beyond v1
 
@@ -38,6 +38,7 @@ It was derived from the analysis in [`Draft/mvp-scope.md`](./Draft/mvp-scope.md)
 | **1.4** | **2026-10-09** | **A fourth change scope.** FR-10.3a gains one selection: the changes introduced by a single named commit. No requirement was renumbered and nothing was removed; FR-10.3b and FR-10.3c are untouched, because the new scope produces the same files-and-hunks structure as the other three. §1.2 is updated to match. **FR-4.8 (new)** — under that scope no check is executed; each is recorded as skipped. |
 | **1.5** | **2026-10-09** | **Reading a public pull request**, decided in [ADR-0011](./adr/0011-cli-reads-a-public-pull-request.md). FR-10.3a gains a fifth selection — a public pull request named by its URL — and lets a comparison name the ref it reviews. **FR-10.3d (new)** — nothing from a pull request is executed, and no configuration is read from it. FR-4.8 is extended to the pull-request scope. §1.2 and §7 no longer say "GitHub integration of any kind": reading a pull request's change set is in v1, and everything else of GitHub stays v3. FR-10.1 is unchanged and still true. |
 | **1.6** | **2026-10-27** | **Amendments adopted from `agentic-code-review-srs-v2.md`** (since merged into Appendix D). Where this document and srs-v2 disagreed, srs-v2's amended text is adopted: **FR-5.7** (the calls that hand over findings are counted, without naming the tool), **FR-6.3a** (a rule no longer needs its own regression case), **FR-8.2b** (the tool-schema clause leaves it; FR-5.6a and §5 still require the property), **FR-8.2c** (whether the ceiling was reached replaces the investigation-tools flag and the completion status), **FR-8.2d** (the minimum breakdown is the total and the emitting count) and **AC-2** (it describes its own run and also verifies FR-4.2). **FR-8.5 (new)**, a Mermaid visual report, and **AC-17 (new)** move into scope. No requirement was renumbered. Nothing else from srs-v2 is adopted: the 37 requirements it places out of scope remain in force here, and FR-4.8, FR-10.3d and FR-10.3a's five selections, which srs-v2 predates, are unchanged. Revision entries 1.2 and 1.3 are added. |
+| **1.8** | **2026-11-06** | **Rule scope is review scope.** §4.8 gains **FR-6.1a (new)**: a rule declares the set of paths it applies to, and a changed file no loaded rule applies to is excluded from review **when the change set is resolved** (CF-1), recorded with a reason distinguishable from a configured exclusion, with an empty review scope never presented as a clean review. **AC-18 (new)** verifies it. **FR-3.5 is untouched** and remains the authority for configured generated, vendored and build-output paths: this adds a second source of exclusion rather than widening the first. No requirement was renumbered and nothing was removed. Four consistency edits follow it, none of them normative: §1.3's definition of a pattern rule gains the scope clause, §3.1's HLR-14 row distinguishes matching a rule's **paths** (deterministic, and new) from judging whether a rule was **violated** (still the model's), §3.1's prose no longer says nothing uses the context-to-rules arrow, and FR-3.5 gains a note that it is now one of two exclusion sources. Prompted by the design decision in [`design/02-domain-model.md`](./design/02-domain-model.md) §3.8, which could state the behaviour but not supply the requirement. |
 | **1.7** | **2026-10-27** | **One SRS.** The v1–v3 catalogue and srs-v2 are merged into this document and removed. The catalogue's business case, scope boundaries, v3 deferral table, glossary terms for later versions, planned non-functional items, roadmap, and the text of every requirement not defined in §4 move to **Appendix C**. srs-v2's high-level requirements (HLR-1…HLR-25) and its level-3 component diagram move to **§3.1**; its unadopted cut and the gaps it would open move to **Appendix D**. No requirement in §4 is changed, added, removed or renumbered; where the catalogue's older wording of an identifier differs from §4, §4's text governs, as it already did. |
 
 ---
@@ -88,7 +89,7 @@ flowchart LR
 | **Evidence record** | The structured outcome of executing checks: per check, whether it ran, was skipped, or errored, plus its result and captured output. |
 | **Finding** | One review observation: file, line or range, severity, category, rationale, and optionally a matched rule identifier. |
 | **Finding model** | The single canonical typed structure for findings (FR-0), from which all outputs are derived. |
-| **Pattern rule** | A "wrong vs. correct" example with an identifier, applied by the agent when producing findings. |
+| **Pattern rule** | A "wrong vs. correct" example with an identifier, applied by the agent when producing findings. Since v1.8 it also declares the paths it covers, and those declarations decide which changed files are reviewed (FR-6.1a). |
 | **Regression harness** | A runnable test over a curated corpus of known defects, reporting how many the reviewer caught. |
 | **Host language** | The language the system itself is written in — Python ([ADR-0007](./adr/0007-python-harness-typescript-target.md)). Distinct from the **target language**, TypeScript/JavaScript, which is the language of the code being reviewed. |
 | **Resolver sidecar** | A bundled helper process, in the target language's own toolchain, that answers "which file does this import specifier refer to?". Private to CF-2 (FR-2.6f). |
@@ -252,7 +253,7 @@ flowchart TB
     class OD,RM,GH out
 ```
 
-Dark green marks a decided component; blue marks the two components added to the HLR page's drawing (related context, HLR-25, and type-check, HLR-24); grey and dashed marks a component no v1 requirement builds. The two-way arrow between context and rules stays in the drawing, but no requirement uses it (HLR-10 is withdrawn). There is no arrow from the reviewer back to context: the reviewer does not ask for more (HLR-15).
+Dark green marks a decided component; blue marks the two components added to the HLR page's drawing (related context, HLR-25, and type-check, HLR-24); grey and dashed marks a component no v1 requirement builds. The two-way arrow between context and rules stays in the drawing; since v1.8 **FR-6.1a uses one direction of it** — the rules' declared scopes reach change-set resolution — and nothing uses the return (HLR-10 is withdrawn). There is no arrow from the reviewer back to context: the reviewer does not ask for more (HLR-15).
 
 | HLR | Requirement | In v1 | Met by |
 |---|---|---|---|
@@ -270,7 +271,7 @@ Dark green marks a decided component; blue marks the two components added to the
 | HLR-11 | The review takes the rules as a direct input | Yes | FR-2.5a |
 | HLR-12 | The review uses both the gathered context and the rules | Yes | FR-5.3, FR-2.3c, FR-2.5, FR-2.5b, FR-6.2a |
 | HLR-13 | The review is produced by an LLM call | Yes | FR-0.3, FR-5.7, FR-5.10 |
-| HLR-14 | A rule-matching component separate from the LLM | No | The LLM applies the rules and names them (FR-6.2a) |
+| HLR-14 | A rule-matching component separate from the LLM | No, for judgement | The LLM decides whether a rule was violated and names it (FR-6.2a). Since v1.8 a rule's declared **path scope** is matched deterministically, to decide which files are reviewed (FR-6.1a) — which files, never which findings |
 | HLR-15 | The reviewer doesn't request further context | Yes, while investigation tools are off | FR-4.6. Enabling investigation tools (FR-5.7a–c) would let the model read more, which this HLR does not allow; that conflict is open and is decided by the measurement FR-5.7b requires |
 | HLR-16 | Reporting is a separate stage from the review | Yes | FR-10.2, FR-10.4a |
 | HLR-17 | A human-readable text report | Yes | FR-10.4a, FR-8.1b |
@@ -506,6 +507,7 @@ Three tools considered and currently excluded, recorded so the reasoning is not 
 ### 4.8 CF-8 — Pattern Library and Regression Harness
 
 - **FR-6.1 (Must)** The system shall load a configurable pattern library of "wrong vs. correct" examples and project standards.
+- **FR-6.1a (Must) (new in v1.8)** Each rule shall declare the set of paths it applies to, and that declaration shall determine review scope: a changed file no loaded rule applies to shall be **excluded from review**. The exclusion shall be applied **when the change set is resolved** (CF-1), for the reason FR-3.5 gives, and the resolved change set shall record it with a reason **distinguishable from a configured exclusion**, so that the stated scope (FR-10.3b) is true. Where no changed file remains, the run shall report that nothing was reviewed and shall not present the result as a clean review.
 - **FR-6.2a (Must)** When a finding is generated from a pattern-library rule, the finding shall reference the identifier of the matched rule.
 - **FR-6.2b (Must)** The system shall support a regression set of pattern examples with expected outcomes, runnable as a test, so pattern-matching behaviour can be verified and monitored across changes.
 - **FR-6.2d (Must) (new in v1)** The regression harness shall report a catch rate over the corpus, and shall accept both a context depth and a tool-call ceiling so that results at different settings are directly comparable.
@@ -523,6 +525,8 @@ Three tools considered and currently excluded, recorded so the reasoning is not 
 
 *Five rules is a floor that proves the mechanism, not a product-grade rule set. Breadth is v2 (FR-6.3).*
 
+*FR-6.1a is new in v1.8. Until then **FR-3.5 was the only source of exclusion from review**, and it names one: configured generated, vendored and build-output paths. A rule that declares what it applies to makes the library a second source, which is new observable behaviour and so belongs here rather than in a design document. Two clauses are the price of admitting it. It is applied at CF-1 because FR-3.5's reason — that no later stage parses, executes against, or budgets for a file that was never going to be reviewed — applies unchanged. And it is recorded distinguishably because a reviewer who cannot tell "no rule covered this file" from "the tool reviewed it and found nothing" has been told nothing; the same line FR-11.2 draws for failure, drawn for scope.*
+
 ### 4.9 CF-9 — Configuration and Diagnostics
 
 - **FR-1.2a (Must)** The system shall read configuration from `.agentic-review.yml` at the repository root when present.
@@ -530,7 +534,7 @@ Three tools considered and currently excluded, recorded so the reasoning is not 
 - **FR-1.2c (Must)** When the file is present but a field is missing, the system shall apply that field's documented default value.
 - **FR-1.2d (Must)** When the file is present but malformed, the system shall fail with an error message identifying the offending field, and shall not fall back silently.
 - **FR-1.3a (Must)** The system shall read the model provider credential from the local environment or user-level configuration, never from a hard-coded key and never from a file committed to the repository.
-- **FR-3.5 (Must) (new in v1)** The system shall exclude configured generated, vendored, and build-output paths from review, using a documented default exclusion list. The exclusion shall be applied **when the change set is resolved** (CF-1), so that no later stage parses, executes against, or budgets for a file that was never going to be reviewed, and the resolved change set shall record what was excluded so that the stated scope (FR-10.3b) is true.
+- **FR-3.5 (Must) (new in v1)** The system shall exclude configured generated, vendored, and build-output paths from review, using a documented default exclusion list. The exclusion shall be applied **when the change set is resolved** (CF-1), so that no later stage parses, executes against, or budgets for a file that was never going to be reviewed, and the resolved change set shall record what was excluded so that the stated scope (FR-10.3b) is true. *(Unchanged in v1.8, which adds a **second** source of exclusion at the same stage and for a different reason — the pattern library's declared scopes, FR-6.1a. This requirement remains the authority for configured generated, vendored and build-output paths, and the two reasons are recorded distinguishably.)*
 - **FR-9.1 (Must)** The system shall ship with README, LICENSE, and CLI usage documentation.
 - **FR-9.3 (Must)** The system shall provide clear failure messages when prerequisites — a test script, a provider key, a git repository, a parseable tree — are missing or unusable.
 
@@ -589,8 +593,9 @@ v1 is complete when all of the following hold. Each is verifiable by execution, 
 | **AC-15** | **Every** finding in a run either cites a specific evidence reference or is marked unverified with a reason. No finding carries neither | FR-5.2c |
 | **AC-16** | A run in which the model made no tool call is distinguishable in both outputs from a run that reviewed the change and found nothing | FR-5.10 |
 | **AC-17** | Requesting the visual report produces Mermaid that renders without error and shows the same findings as the JSON report | FR-8.5 |
+| **AC-18** | A change containing a file no loaded rule applies to completes, states in both outputs that the file was excluded and why — distinguishably from a configured exclusion — and, where that leaves nothing to review, is not reported as a clean review. **A file one rule excludes and another includes is still reviewed** | FR-6.1a, FR-10.3b |
 
-*AC-8, AC-11 and AC-12 were reworded in v1.1. They previously asserted literal field names and values — `achievedDepth: 1`, `degraded: 'unresolvable-imports'` — which made renaming an internal identifier a test failure. They now assert the behaviour the identifier carries. AC-10 gains the clause that tests FR-2.6e, which §4.2.2 calls the highest-value structural constraint in this document and which nothing previously checked. AC-13 and AC-14 are new, and verify the two contradictions v1.1 fixed. AC-2 was amended and AC-17 added in v1.6, adopting srs-v2's text: AC-2 used to rest on AC-1's run and now describes its own.*
+*AC-8, AC-11 and AC-12 were reworded in v1.1. They previously asserted literal field names and values — `achievedDepth: 1`, `degraded: 'unresolvable-imports'` — which made renaming an internal identifier a test failure. They now assert the behaviour the identifier carries. AC-10 gains the clause that tests FR-2.6e, which §4.2.2 calls the highest-value structural constraint in this document and which nothing previously checked. AC-13 and AC-14 are new, and verify the two contradictions v1.1 fixed. AC-2 was amended and AC-17 added in v1.6, adopting srs-v2's text: AC-2 used to rest on AC-1's run and now describes its own. AC-18 is new in v1.8, with FR-6.1a; its second clause exists because the first alone is satisfied by an implementation that pools the rules' exclusions, which is the specific mistake it has to rule out.*
 
 **AC-5 and AC-7 are the two to defend under schedule pressure.** Without measurement there is no way to know whether the reviewer improved. Without the skipped/errored distinction, "no findings" silently means both "clean" and "broken".
 
@@ -779,7 +784,7 @@ Step 4.5 exists for the same reason and is the one step that may end in a revert
 | FR-4.1, FR-4.2, FR-4.4a–b, FR-4.5a–c, FR-4.6, FR-4.7, FR-4.8 | CF-3 | AC-1, AC-2, AC-7 |
 | FR-5.1, FR-5.3, FR-5.7, FR-5.7a–d, FR-5.8, FR-5.9, FR-5.10 | CF-6 | AC-2, AC-10, AC-11, AC-16 |
 | FR-5.2, FR-5.2a–c, FR-5.6, FR-5.6a–c | CF-5 | AC-3, AC-13, AC-15 |
-| FR-6.1, FR-6.2a, FR-6.2b, FR-6.2d, FR-6.2e, FR-6.2f, FR-6.3a | CF-8 | AC-4, AC-5, AC-6, AC-11 |
+| FR-6.1, FR-6.1a, FR-6.2a, FR-6.2b, FR-6.2d, FR-6.2e, FR-6.2f, FR-6.3a | CF-8 | AC-4, AC-5, AC-6, AC-11, AC-18 |
 | FR-7.2 | — | Satisfied by absence of a write path |
 | FR-8.1b, FR-8.2a–e, FR-8.4, FR-10.4a–d | CF-7 | AC-1, AC-3, AC-7, AC-14 |
 | FR-8.5 | CF-7 | AC-17 |
