@@ -9,7 +9,8 @@ import httpx
 import openai
 from langchain_core.messages import HumanMessage, ToolMessage
 
-from agentic_review.core.config.settings import DEFAULT_MODEL
+from agentic_review.agents.review_port import provider_for
+from agentic_review.core.config.settings import DEFAULT_BASE_URL, DEFAULT_MODEL
 from agentic_review.core.findings.port import ReviewedFile, RunMaterial
 from agentic_review.core.findings.schema import SCHEMA_VERSION
 from tests.unit.agents.conftest import CONTEXT, PortFactory
@@ -47,7 +48,7 @@ def test_two_valid_calls_become_two_findings(make_port: PortFactory) -> None:
     assert (outcome.tool_calls_total, outcome.tool_calls_emission, outcome.tool_calls_investigation) == (2, 2, 0)
     assert outcome.repair_turns == 0
     assert (outcome.tokens_in, outcome.tokens_out) == (1200, 80)
-    assert outcome.model == DEFAULT_MODEL and outcome.provider == "integrate.api.nvidia.com"
+    assert outcome.model == DEFAULT_MODEL and outcome.provider == provider_for(DEFAULT_BASE_URL)
 
     observations = [m for m in port.last_transcript if isinstance(m, ToolMessage)]
     assert [m.tool_call_id for m in observations] == [c["id"] for c in calls]

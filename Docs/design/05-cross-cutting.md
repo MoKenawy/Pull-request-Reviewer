@@ -170,13 +170,15 @@ Point at any finding and answer, without re-running: **what did the model see, a
 
 ```mermaid
 flowchart LR
-    D["Built-in defaults<br/>FR-1.2b"] --> F[".agentic-review.yml<br/>FR-1.2a"] --> C["CLI flags"] --> R["Resolved config<br/>recorded in the run"]
-    E["Environment<br/>credential only"] -.-> R
+    D["Built-in defaults<br/>FR-1.2b"] --> F[".agentic-review.yml<br/>FR-1.2a"] --> E["Environment<br/>agent.model · agent.baseUrl"] --> C["CLI flags"] --> R["Resolved config<br/>recorded in the run"]
+    K["Environment<br/>credential"] -.-> R
 
     style R fill:#e8f7e8
 ```
 
 **Later wins, one field at a time.** A file setting `context.depth` and nothing else keeps every other default (FR-1.2c) — the merge is per-field, never whole-section replacement.
+
+**The environment layer is narrow by design:** `AGENTIC_REVIEW_MODEL` and `AGENTIC_REVIEW_BASE_URL` only. The file is the project's choice of model, committed with it; the environment is the one developer's, alongside the key they already keep there, and it is validated by the same settings model — an unusable endpoint is an exit 3 naming the variable, because that is where the credential would be sent. An unset or blank variable overrides nothing.
 
 **One deliberate exception: `exclude` merges rather than overrides.** Replacement semantics would mean a user adding one pattern silently un-excludes `node_modules`, which is not a default anyone means to switch off.
 

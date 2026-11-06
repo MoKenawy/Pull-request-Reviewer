@@ -14,6 +14,7 @@ import pytest
 from agentic_review.core.changeset.model import ChangeSet
 from agentic_review.core.changeset.pull_request import PullRequestError, PullRequestRef
 from agentic_review.core.config.credentials import ENV_VAR, CredentialSources, credential_sources
+from agentic_review.core.config.environment import BASE_URL_ENV_VAR, MODEL_ENV_VAR, agent_overrides
 from agentic_review.core.pipeline.preflight import PreflightFailure, PreflightOk, preflight
 from tests.support.repo_builder import RepoBuilder
 
@@ -213,3 +214,32 @@ def test_an_explicit_config_file_is_used_for_a_pull_request(tmp_path: Path, sour
     source = StubSource()
     message = _message(preflight(tmp_path, config, sources, pr=PR_URL, pull_requests=source))
     assert "agent.toolCallCeling" in message and source.calls == []
+
+
+# --- the model and endpoint from the environment (05 §4.1) -----------------------------------------------------------
+
+
+def test_the_environment_supplies_the_model_and_endpoint(repo: RepoBuilder, sources: CredentialSources) -> None:
+    overrides = agent_overrides({MODEL_ENV_VAR: "from-env", BASE_URL_ENV_VAR: "http://localhost:11434/v1"})
+    result = preflight(repo.root, None, sources, overrides=overrides)
+    assert isinstance(result, PreflightOk), result
+    assert result.loaded.settings.agent.model == "from-env"
+    assert result.loaded.settings.agent.base_url == "http://localhost:11434/v1"
+
+
+def test_the_environment_wins_over_the_configuration_file(repo: RepoBuilder, sources: CredentialSources) -> None:
+    config = "agent:\n  model: from-file\n  baseUrl: https://from-file.example/v1\n"
+    repo.write(".agentic-review.yml", config)
+    result = preflight(repo.root, None, sources, overrides=agent_overrides({MODEL_ENV_VAR: "from-env"}))
+    assert isinstance(result, PreflightOk), result
+    assert result.loaded.settings.agent.model == "from-env"
+    assert result.loaded.settings.agent.base_url == "https://from-file.example/v1"
+
+
+def test_an_endpoint_from_the_environment_that_is_not_a_url_stops_the_run(
+    repo: RepoBuilder, sources: CredentialSources
+) -> None:
+    overrides = agent_overrides({BASE_URL_ENV_VAR: "localhost:11434"})
+    message = _message(preflight(repo.root, None, sources, overrides=overrides))
+    assert BASE_URL_ENV_VAR in message
+    assert "must be an http:// or https:// URL" in message
