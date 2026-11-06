@@ -213,3 +213,96 @@ def test_an_explicit_config_file_is_used_for_a_pull_request(tmp_path: Path, sour
     source = StubSource()
     message = _message(preflight(tmp_path, config, sources, pr=PR_URL, pull_requests=source))
     assert "agent.toolCallCeling" in message and source.calls == []
+
+
+# --- the rule library (spec 003 FR-005, FR-024, FR-027, FR-028) -----------------------------------------------------
+
+
+_GOOD_RULES = """\
+rules:
+  - id: project-local-rule
+    title: A project rule of our own
+    category: maintainability
+    defaultSeverity: nit
+    wrong: |
+      const a = 1;
+    correct: |
+      const b = 2;
+"""
+
+
+def test_the_shipped_library_lands_on_the_result_with_no_key_configured(
+    repo: RepoBuilder, sources: CredentialSources
+) -> None:
+    result = preflight(repo.root, None, sources)
+    assert isinstance(result, PreflightOk)
+    assert result.library.source == "shipped" and len(result.library.rules) >= 5
+
+
+def test_the_results_library_states_its_source_and_rule_count_for_the_trace(
+    repo: RepoBuilder, sources: CredentialSources
+) -> None:
+    """spec 003 FR-028 / SRS FR-11.3. The whole pipeline state is what every attached tracer ships, so these two
+    facts reach the trace by being on the result — no field is added to the published report's run record."""
+    repo.write("review-rules.yml", _GOOD_RULES)
+    repo.write(".agentic-review.yml", "patterns:\n  rules: ./review-rules.yml\n")
+    result = preflight(repo.root, None, sources)
+    assert isinstance(result, PreflightOk)
+    assert result.library.source == "shipped + review-rules.yml"
+    assert len(result.library.rules) >= 6 and "project-local-rule" in result.library.ids
+
+
+def test_a_configured_rules_file_is_resolved_against_the_repository_root(
+    repo: RepoBuilder, sources: CredentialSources
+) -> None:
+    repo.write("config/review-rules.yml", _GOOD_RULES)
+    repo.write(".agentic-review.yml", "patterns:\n  rules: config/review-rules.yml\n")
+    result = preflight(repo.root, None, sources)
+    assert isinstance(result, PreflightOk) and "project-local-rule" in result.library.ids
+
+
+def test_a_malformed_configured_rules_file_fails_preflight_naming_the_file_and_the_field(
+    repo: RepoBuilder, sources: CredentialSources
+) -> None:
+    repo.write("review-rules.yml", _GOOD_RULES.replace("maintainability", "perf"))
+    repo.write(".agentic-review.yml", "patterns:\n  rules: ./review-rules.yml\n")
+    message = _message(preflight(repo.root, None, sources))
+    assert "review-rules.yml: rules[0].category: 'perf' is not a category" in message
+
+
+def test_a_configured_rules_file_that_does_not_exist_fails_the_same_way(
+    repo: RepoBuilder, sources: CredentialSources
+) -> None:
+    repo.write(".agentic-review.yml", "patterns:\n  rules: ./missing-rules.yml\n")
+    message = _message(preflight(repo.root, None, sources))
+    assert "patterns.rules:" in message and "does not exist" in message
+
+
+def test_a_bad_rules_file_costs_no_credential_and_no_fetch(tmp_path: Path, sources: CredentialSources) -> None:
+    """spec 003 FR-027 / SC-007: exit 3 with zero provider calls. The library is checked before the credential."""
+    config = tmp_path / "mine.yml"
+    config.write_text("patterns:\n  rules: " + str(tmp_path / "nope.yml") + "\n", encoding="utf-8")
+    source = StubSource()
+    message = _message(preflight(tmp_path, config, sources, pr=PR_URL, pull_requests=source))
+    assert "does not exist" in message and source.calls == []
+
+
+def test_a_relative_rules_path_for_a_pull_request_fails_loudly_rather_than_guessing(
+    tmp_path: Path, sources: CredentialSources
+) -> None:
+    """Design gap 003/D-9. A --pr review has no repository root; resolving against the working directory would
+    read a file from wherever the tool was run, which FR-10.3d refuses for the configuration itself."""
+    config = tmp_path / "mine.yml"
+    config.write_text("patterns:\n  rules: ./review-rules.yml\n", encoding="utf-8")
+    source = StubSource()
+    message = _message(preflight(tmp_path, config, sources, pr=PR_URL, pull_requests=source))
+    assert "is relative" in message and "no repository root" in message and source.calls == []
+
+
+def test_an_absolute_rules_path_works_for_a_pull_request(tmp_path: Path, sources: CredentialSources) -> None:
+    rules = tmp_path / "review-rules.yml"
+    rules.write_text(_GOOD_RULES, encoding="utf-8")
+    config = tmp_path / "mine.yml"
+    config.write_text("patterns:\n  rules: " + str(rules) + "\n", encoding="utf-8")
+    result = preflight(tmp_path, config, sources, pr=PR_URL, pull_requests=StubSource())
+    assert isinstance(result, PreflightOk) and "project-local-rule" in result.library.ids

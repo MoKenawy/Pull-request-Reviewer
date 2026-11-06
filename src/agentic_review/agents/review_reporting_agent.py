@@ -42,7 +42,7 @@ from agentic_review.agents.provider_errors import (
     rate_limit_degradation,
     to_degradation,
 )
-from agentic_review.core.assembly.prompt import user_message
+from agentic_review.core.assembly.prompt import system_message, user_message
 from agentic_review.core.findings.model import ToolObservation
 from agentic_review.core.findings.port import ReviewContext
 from agentic_review.core.findings.report import CompletionStatus, Degradation
@@ -256,7 +256,9 @@ def start_run(context: ReviewContext, *, ceiling: int | None = None) -> ReviewRu
     return ReviewRun(
         context=context,
         messages=[
-            SystemMessage(content=context.instructions),
+            # The rules block is part of the SYSTEM message, never the user message: it is run-independent, and
+            # `system_message` is the one place instructions and rules are joined (spec 003 FR-007, research R-2).
+            SystemMessage(content=system_message(context.instructions, context.rules_block)),
             HumanMessage(content=user_message(context.material_statement, context.diff_section)),
         ],
         accounting=CallAccounting(ceiling=ceiling),

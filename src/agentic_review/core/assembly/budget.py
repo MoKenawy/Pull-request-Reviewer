@@ -19,6 +19,13 @@ class BudgetExhausted:
 
     estimated_tokens: int
     limit: int
+    fixed_section_tokens: int = 0
+    """The static prefix's share — the instructions plus the whole rule library.
+
+    Carried so that the degradation can say *what is taking the room*. A static prefix raises every prompt's
+    floor, which is the one new way a change set that used to fit can start being refused (research R-8). Zero
+    when no library was given, which is what every run did before feature 003.
+    """
 
 
 def estimate_tokens(text: str) -> int:

@@ -36,6 +36,13 @@ class ReviewContext:
     diff_section: str
     estimated_tokens: int
     material: RunMaterial
+    rules_block: str = ""
+    """CF-8's rendered rule library, as **its own field** rather than concatenated into ``instructions``.
+
+    Addressable on its own because two things need it that way: SC-004's byte-identity check over the static
+    prefix, and the fixed section's token constant. ``core.assembly.prompt.system_message`` is what joins the two
+    into the system message, and it is the only place that may (spec 003 FR-007, research R-2).
+    """
 
 
 @dataclass(frozen=True)
