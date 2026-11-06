@@ -39,7 +39,7 @@ flowchart LR
 
 | Section | Claim | Behaviour when space is short |
 |---|---|---|
-| Instructions and rules | Fixed | Five rules preload; small, and needed every time |
+| Instructions and rules | Fixed | The **static system-prompt prefix**: the whole rule library, every run, unconditionally — so this section is a constant computed once at load, not a figure that moves with the change set ([`02-domain-model.md`](./02-domain-model.md) §3.8) |
 | **The diff** | **All of it** | **Never truncated** (FR-2.5b). It is the thing being reviewed |
 | Evidence | Distilled, capped | Already reduced to failing names, messages, and frames touching changed files (FR-2.5c) |
 | Related context | Whatever is left | **The only section that yields** |
