@@ -39,9 +39,9 @@ from agentic_review.core.changeset.diff_parser import (
     split_patch,
     synthesise_added_file,
 )
-from agentic_review.core.changeset.exclusion import classify
+from agentic_review.core.changeset.exclusion import RuleScope, classify, in_any_rule_scope
 from agentic_review.core.changeset.model import ChangedFile, ChangeSet, ScopeRequest, language_for
-from agentic_review.core.findings.report import ChangeType, ExcludedPath, ResolvedScope
+from agentic_review.core.findings.report import ChangeType, ExcludedPath, RULES_NO_SCOPE_MATCH, ResolvedScope
 
 _DIFF_FLAGS = ("--no-color", "--no-ext-diff", "--no-textconv")
 _BINARY_SNIFF_BYTES = 8000  # git's own heuristic: a NUL byte in the first 8,000 bytes
@@ -90,10 +90,14 @@ def _collect(
     target: str,
     untracked: Sequence[str],
     exclude: Sequence[str],
+    rule_scopes: Sequence[RuleScope] = (),
 ) -> tuple[tuple[ChangedFile, ...], tuple[ExcludedPath, ...]]:
     """One tracked comparison (``git diff <target>``) plus any untracked files, as files and exclusions.
 
     ``target`` is a single revision (compared with the working tree) or ``base...head``.
+
+    ``rule_scopes`` are CF-8's declared scopes, as plain pattern tuples. A reviewable file no scope covers is moved
+    into the excluded list with ``rules:no-scope-match`` — see ``_apply_rule_scope`` for why that happens last.
     """
     entries = parse_name_status(run_git(repo_root, "diff", "--name-status", "-z", "-M", *_DIFF_FLAGS, target, "--"))
     numstat = parse_numstat(run_git(repo_root, "diff", "--numstat", "-z", "-M", *_DIFF_FLAGS, target, "--"))
@@ -153,9 +157,38 @@ def _collect(
             )
         )
 
+    files, scope_dropped = _apply_rule_scope(files, rule_scopes)
+    excluded.extend(scope_dropped)
+
     files.sort(key=lambda f: f.path)
     excluded.sort(key=lambda e: e.path)
     return tuple(files), tuple(excluded)
+
+
+def _apply_rule_scope(
+    files: list[ChangedFile], rule_scopes: Sequence[RuleScope]
+) -> tuple[list[ChangedFile], list[ExcludedPath]]:
+    """Drop the reviewable files no loaded rule covers (SRS FR-6.1a, spec 003 FR-013, FR-014; research R-4).
+
+    Applied **last**, and only to files that would otherwise be reviewed. The ordering is the whole point: a
+    changed ``README.md`` must be reported as *not a reviewed language*, never as *no rule applies*, and a file a
+    configured pattern already excluded never reaches here at all. Three mechanisms, three distinguishable
+    explanations, no competition over one path.
+
+    Note that reviewability is a property of ``ChangedFile``, not a filter earlier in this function: a non-TS file
+    stays in ``files`` and is reported through ``notReviewedReason``, a different array from ``excluded``. So the
+    gate is ``is_reviewable`` on the built file, which is why this runs after the loop above rather than inside it.
+    """
+    if not rule_scopes:
+        return files, []
+    kept: list[ChangedFile] = []
+    dropped: list[ExcludedPath] = []
+    for changed in files:
+        if changed.is_reviewable and not in_any_rule_scope(changed.path, rule_scopes):
+            dropped.append(ExcludedPath(path=changed.path, rule=RULES_NO_SCOPE_MATCH))
+        else:
+            kept.append(changed)
+    return kept, dropped
 
 
 @dataclass(frozen=True)
@@ -174,12 +207,18 @@ class BranchDiff:
         return f"{self.merge_base}..{self.head}"
 
 
-def diff_branches(repo_root: Path, base: str, head: str, exclude: Sequence[str]) -> BranchDiff:
+def diff_branches(
+    repo_root: Path,
+    base: str,
+    head: str,
+    exclude: Sequence[str],
+    rule_scopes: Sequence[RuleScope] = (),
+) -> BranchDiff:
     """``git diff base...head``: merge-base(base, head) ↔ head. The working tree and the index are not read.
 
     Two-dot would review commits merged into ``base`` after the branch point as the author's own work (R-4).
     """
-    files, excluded = _collect(repo_root, f"{base}...{head}", (), exclude)
+    files, excluded = _collect(repo_root, f"{base}...{head}", (), exclude, rule_scopes)
     merge_base = run_git(repo_root, "merge-base", base, head).strip()
     return BranchDiff(files, excluded, merge_base=_short(repo_root, merge_base), head=_short(repo_root, head))
 
@@ -190,18 +229,26 @@ def resolve(
     exclude: Sequence[str],
     *,
     was_defaulted: bool,
+    rule_scopes: Sequence[RuleScope] = (),
 ) -> ChangeSet:
+    """``rule_scopes`` default to empty, which reviews every reviewable file — the behaviour before feature 003."""
     if scope.kind == "working-tree":
-        return _resolve_working_tree(repo_root, exclude, was_defaulted=was_defaulted)
+        return _resolve_working_tree(repo_root, exclude, was_defaulted=was_defaulted, rule_scopes=rule_scopes)
     if scope.kind == "range":
-        return _resolve_range(repo_root, scope, exclude, was_defaulted=was_defaulted)
+        return _resolve_range(repo_root, scope, exclude, was_defaulted=was_defaulted, rule_scopes=rule_scopes)
     raise NotImplementedError(f"the {scope.kind} scope arrives with User Story 4")
 
 
-def _resolve_working_tree(repo_root: Path, exclude: Sequence[str], *, was_defaulted: bool) -> ChangeSet:
+def _resolve_working_tree(
+    repo_root: Path,
+    exclude: Sequence[str],
+    *,
+    was_defaulted: bool,
+    rule_scopes: Sequence[RuleScope] = (),
+) -> ChangeSet:
     base = _empty_tree(repo_root) if head_is_unborn(repo_root) else "HEAD"
     untracked = [p for p in run_git(repo_root, "ls-files", "--others", "--exclude-standard", "-z").split("\0") if p]
-    files, excluded = _collect(repo_root, base, untracked, exclude)
+    files, excluded = _collect(repo_root, base, untracked, exclude, rule_scopes)
     description = (
         f"uncommitted changes in the working tree{' (default)' if was_defaulted else ''} · {_files(len(files))}"
     )
@@ -213,11 +260,18 @@ def _resolve_working_tree(repo_root: Path, exclude: Sequence[str], *, was_defaul
     )
 
 
-def _resolve_range(repo_root: Path, scope: ScopeRequest, exclude: Sequence[str], *, was_defaulted: bool) -> ChangeSet:
+def _resolve_range(
+    repo_root: Path,
+    scope: ScopeRequest,
+    exclude: Sequence[str],
+    *,
+    was_defaulted: bool,
+    rule_scopes: Sequence[RuleScope] = (),
+) -> ChangeSet:
     if scope.base is None:
         raise ValueError("the range scope needs a base; preflight checks this before a change is resolved")
     head = scope.head or "HEAD"
-    diff = diff_branches(repo_root, scope.base, head, exclude)
+    diff = diff_branches(repo_root, scope.base, head, exclude, rule_scopes)
     description = (
         f"changes on {head} since it left {scope.base} ({diff.commits})"
         f"{' (default)' if was_defaulted else ''} · {_files(len(diff.files))}"

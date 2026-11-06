@@ -27,6 +27,7 @@ from pathlib import Path
 from typing import Any, Protocol
 
 from agentic_review.core.changeset._git import GitError, GitNotFound, run_git
+from agentic_review.core.changeset.exclusion import RuleScope
 from agentic_review.core.changeset.model import ChangeSet
 from agentic_review.core.changeset.resolve import diff_branches, have_merge_base, ref_exists
 from agentic_review.core.changeset.summary import measure_new_files
@@ -92,7 +93,15 @@ class PullRequestError(Exception):
 class OpenedPullRequest(Protocol):
     """A pull request that exists and can be read. ``close`` must be called once the run is over."""
 
-    def change_set(self, exclude: Sequence[str]) -> ChangeSet: ...
+    def change_set(self, exclude: Sequence[str], rule_scopes: Sequence[RuleScope] = ()) -> ChangeSet:
+        """``rule_scopes`` are CF-8's declared scopes (SRS FR-6.1a), as plain pattern tuples.
+
+        **This interface widened in feature 003** — recorded as design gap 003/D-6 rather than done quietly,
+        because ADR-0011 names it as the seam a GitHub-MCP-backed implementation will substitute into. The
+        parameter is additive with a default, and nothing pull-request-specific changed: review scope is policy
+        applied to every scope alike, not a property of how the change was resolved (FR-10.3c).
+        """
+        ...
 
     def line_counts(self, change_set: ChangeSet) -> Mapping[str, int]:
         """Line counts of the reviewable files as they are at the pull request's head."""
@@ -155,8 +164,8 @@ class _ClonedPullRequest:
     base_rev: str
     base_was_default: bool
 
-    def change_set(self, exclude: Sequence[str]) -> ChangeSet:
-        diff = diff_branches(self.repo_root, self.base_rev, self.pr.head_ref, exclude)
+    def change_set(self, exclude: Sequence[str], rule_scopes: Sequence[RuleScope] = ()) -> ChangeSet:
+        diff = diff_branches(self.repo_root, self.base_rev, self.pr.head_ref, exclude, rule_scopes)
         count = len(diff.files)
         description = (
             f"pull request {self.pr.slug} against {self.base_name}"
