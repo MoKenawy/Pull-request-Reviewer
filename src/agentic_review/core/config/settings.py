@@ -7,6 +7,7 @@ silently. There is deliberately no field that could hold a credential (FR-1.3a).
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -68,6 +69,18 @@ class BudgetSettings(_Section):
     max_tokens: Annotated[int, Field(ge=1)] = 200000  # PLACEHOLDER - SRS §8, TBD-3
 
 
+class PatternsSettings(_Section):
+    """Where a project keeps rules of its own (spec 003 FR-024, contracts/rules-file.md §1)."""
+
+    rules: Path | None = None
+    """A file of additional rules, relative to the repository root. Unset is not an error and reports nothing.
+
+    Its rules are **added** to the shipped ones, never substituted for them, the way a configured exclusion list
+    merges with the defaults (spec 003 FR-025). A relative path needs a repository root to resolve against, which
+    a pull-request review does not have — see ``core.pipeline.preflight`` (design gap 003/D-9).
+    """
+
+
 class Settings(_Section):
     schema_version: Literal[1] = 1
     scope: ScopeSetting = "working-tree"
@@ -76,3 +89,4 @@ class Settings(_Section):
     checks: ChecksSettings = ChecksSettings()
     agent: AgentSettings = AgentSettings()
     budget: BudgetSettings = BudgetSettings()
+    patterns: PatternsSettings = PatternsSettings()

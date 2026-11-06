@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -25,6 +26,7 @@ def test_defaults() -> None:
     assert settings.agent.request_timeout_seconds == 60
     assert settings.agent.rate_limit_retry_seconds == 60
     assert settings.budget.max_tokens == 200000
+    assert settings.patterns.rules is None  # spec 003 FR-024: absent is not an error and reports nothing
 
 
 def _error_locs(data: dict[str, Any]) -> list[tuple[Any, ...]]:
@@ -49,10 +51,20 @@ def _error_locs(data: dict[str, Any]) -> list[tuple[Any, ...]]:
         ({"scope": "everything"}, ("scope",)),
         ({"apiKey": "sk-123"}, ("apiKey",)),
         ({"agent": {"apiKey": "sk-123"}}, ("agent", "apiKey")),
+        ({"patterns": {"rule": "./review-rules.yml"}}, ("patterns", "rule")),
+        ({"patterns": {"rules": "./x.yml", "extra": 1}}, ("patterns", "extra")),
     ],
 )
 def test_invalid_or_unknown_fields_are_named(data: dict[str, Any], loc: tuple[Any, ...]) -> None:
     assert loc in _error_locs(data)
+
+
+def test_a_configured_rules_path_validates_and_stays_a_path(tmp_path: Path) -> None:
+    """spec 003 FR-024. The first Path-typed setting; resolution against the repository root is preflight's."""
+    relative = Settings.model_validate({"patterns": {"rules": "./review-rules.yml"}})
+    assert relative.patterns.rules == Path("review-rules.yml")
+    absolute = Settings.model_validate({"patterns": {"rules": str(tmp_path / "r.yml")}})
+    assert absolute.patterns.rules == tmp_path / "r.yml"
 
 
 def test_no_field_can_hold_a_credential() -> None:

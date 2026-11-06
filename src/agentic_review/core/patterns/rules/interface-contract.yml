@@ -1,0 +1,29 @@
+# Shipped rule — FR-6.3a. Scoped to the directories a package exports from, because the problem is callers the
+# change never looked at. A caller outside those directories is v2's depth question, not this rule's.
+rules:
+  - id: widened-exported-return-type
+    title: An exported function's return type gains undefined or null, so every caller's narrowing is now wrong
+    category: interface-contract
+    defaultSeverity: blocking
+    appliesWhen:
+      include:
+        - "src/**/*.ts"
+        - "src/**/*.tsx"
+        - "lib/**/*.ts"
+        - "packages/**/*.ts"
+      exclude:
+        - "**/*.test.ts"
+        - "**/*.test.tsx"
+        - "**/*.spec.ts"
+        - "**/__tests__/**"
+    wrong: |
+      // was: export function findUser(id: string): User
+      export function findUser(id: string): User | undefined {
+        return cache.get(id);       // callers still write findUser(id).name
+      }
+    correct: |
+      export function findUser(id: string): User {
+        const user = cache.get(id);
+        if (!user) throw new UserNotFound(id);
+        return user;
+      }

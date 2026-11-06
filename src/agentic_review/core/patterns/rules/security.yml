@@ -1,0 +1,28 @@
+# Shipped rule — FR-6.3a. Scoped to where request handling lives: the pattern is about input that crossed a
+# trust boundary, and a path under src/ui/ has not got one.
+rules:
+  - id: untrusted-input-in-query
+    title: Request data is concatenated into a query or command instead of being passed as a parameter
+    category: security
+    defaultSeverity: blocking
+    appliesWhen:
+      include:
+        - "src/**/*.ts"
+        - "src/**/*.js"
+        - "api/**/*.ts"
+        - "server/**/*.ts"
+        - "routes/**/*.ts"
+        - "**/*.handler.ts"
+      exclude:
+        - "**/*.test.ts"
+        - "**/*.spec.ts"
+        - "**/__tests__/**"
+    wrong: |
+      const rows = await db.query(
+        `SELECT * FROM orders WHERE customer = '${req.query.customer}'`
+      );
+    correct: |
+      const rows = await db.query(
+        "SELECT * FROM orders WHERE customer = $1",
+        [req.query.customer]
+      );
