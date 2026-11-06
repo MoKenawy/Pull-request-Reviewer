@@ -32,6 +32,8 @@ def _isolate_environment(monkeypatch: pytest.MonkeyPatch, tmp_path_factory: pyte
     for name in (
         "AGENTIC_REVIEW_API_KEY",
         "AGENTIC_REVIEW_DEBUG",
+        "AGENTIC_REVIEW_MODEL",  # the developer's own model and endpoint must not reach a test
+        "AGENTIC_REVIEW_BASE_URL",
         "XDG_CONFIG_HOME",
         "NO_COLOR",
         "LANGFUSE_PUBLIC_KEY",  # with these set, the system prompt would be fetched from Langfuse

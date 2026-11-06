@@ -1203,8 +1203,10 @@ budget:
 ```mermaid
 flowchart LR
     D["Built-in defaults"] -->|"overridden per field<br/>never whole sections"| F[".agentic-review.yml"]
-    F -->|"overridden by"| C["CLI flags"]
+    F -->|"overridden by"| E["Environment<br/>AGENTIC_REVIEW_MODEL<br/>AGENTIC_REVIEW_BASE_URL"]
+    E -->|"overridden by"| C["CLI flags"]
     C --> S(["Settings"])
+    E -.->|"invalid value"| X3
     F -.->|"invalid value · unknown field ·<br/>duplicate key · YAML syntax error"| X3["exit 3<br/>file + dotted path<br/>(or line and column)"]
     F -.->|"setting for an unbuilt capability"| N["one stderr notice<br/>listing the dotted paths"]
 
