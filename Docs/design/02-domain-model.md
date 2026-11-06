@@ -103,6 +103,7 @@ classDiagram
         id / title
         category / default_severity
         wrong / correct
+        applies_when : PathScope
     }
 
     ReviewReport *-- RunMetadata
@@ -149,7 +150,7 @@ flowchart LR
 | `ChangeSummary` | CF-1 | CF-7 | 📦 FR-10.3b, FR-8.2c — the diff itself does not belong in the artifact |
 | `RelatedContextResult` | CF-2 | CF-4 only | 🔒 §4.2.2 — one consumer, by design (FR-2.6e) |
 | `EvidenceRecord` | CF-3 | CF-4, CF-7 | 📦 FR-4.5c |
-| `PatternRule` | CF-8 | CF-4 (preloaded), CF-7 (attribution) | — |
+| `PatternRule` | CF-8 | CF-4 (static prefix, all of them), CF-7 (attribution) | — · §3.8 |
 | `FindingDraft` | the model, via `emit_finding` | CF-5 | 🔒 FR-5.6a — the only door in |
 | `Finding` | CF-5 | CF-7 | 📦 FR-0.1 |
 | `ReviewReport` | CF-7 | the user, the corpus | 📦 FR-8.2b |
@@ -167,7 +168,7 @@ flowchart LR
 | `repo_root` | path | Absolute. Every other path in the system is relative to it. |
 | `scope` | `ResolvedScope` | What was reviewed, and whether the user chose it |
 | `files` | `ChangedFile[]` | |
-| `excluded` | `ExcludedPath[]` ⚠️ | Paths dropped by FR-3.5. [DB-12](../../DESIGN_BLOCKERS.md#db-12) |
+| `excluded` | `ExcludedPath[]` ⚠️ | Paths dropped by FR-3.5, and — under **FR-6.1a** (SRS v1.8) — paths no rule's `applies_when` covers, with the reason `rules:no-scope-match`. [DB-12](../../DESIGN_BLOCKERS.md#db-12) |
 
 **`ResolvedScope`** — FR-10.3a, FR-10.3b
 
@@ -499,12 +500,70 @@ Traceability at a few hundred bytes instead of a few megabytes — and `evicted_
 
 ### 3.8 `PatternRule` and `CorpusCase` — CF-8
 
-**`PatternRule`** — `id` (stable slug, e.g. `no-unawaited-promise`), `title`, `category`, `default_severity`, `wrong`, `correct`, `applies_when`.
+**`PatternRule`** — `id` (stable slug, e.g. `no-unawaited-promise`), `title`, `category`, `default_severity`, `wrong`, `correct`, `applies_when: PathScope`.
+
+**`PathScope`** — `include: str[]` (default `['**/*']`), `exclude: str[]` (default empty).
 
 **`CorpusCase`** — `id`, `fixture_path`, `expected: ExpectedDefect[]`, `is_clean: bool`.
 **`ExpectedDefect`** — `file`, `symbol`, `category`, `rule_id?`, `description`.
 
 `is_clean` exists because **catch rate alone is gameable**: a reviewer that flags every line catches every defect. Clean cases are how precision gets measured. The predicate that decides whether a `Finding` *matches* an `ExpectedDefect` is [DB-06](../../DESIGN_BLOCKERS.md#db-06) — answered in M6: same file, same enclosing symbol, same category, and the same rule when both carry one ([`06-verification.md`](./06-verification.md) §1.2). Its targets remain TBD-6.
+
+#### `applies_when` — the rule's own file scope, inside a static prompt
+
+> **Decided 2026-11-06.** M2 named the field and left it unspecified. An earlier draft of this section on the same day made scope a *deterministic pre-filter* that chose which rules reached the prompt, and bundled them per file; **that is withdrawn.** Rules are static, so they are sent whole and unconditionally, and `applies_when` travels with them. The comparison that prompted the first attempt is [`../Draft/rule-matching-vs-open-code-review.md`](../Draft/rule-matching-vs-open-code-review.md) §4. FR-6.1, FR-2.5a and FR-6.2a are untouched by the static-prompt half of this decision. The **review-scope** half — rule scope deciding which files are reviewed at all — was new observable behaviour that no requirement stated, and it became **FR-6.1a in SRS v1.8** on 2026-11-06, verified by **AC-18**. See *Two costs*, item 2.
+
+**The library does not vary, so it belongs in the cacheable prefix.** A rule's text depends on neither the change set, nor the repository, nor the run. Every rule ships in the **system prompt**, every review, with no selection step — the whole library, `applies_when` included.
+
+| Block | Contents |
+|---|---|
+| **System prompt** — static, byte-identical across runs | Instructions, the finding contract, **the entire rule library** with each rule's `applies_when` |
+| **User message** — varies per run | The diff, related context, evidence |
+
+Three things follow, and the third is the point:
+
+1. **The budget stops negotiating.** FR-2.5a's "instructions and rules" section becomes a constant, computed once at load and subtracted from the window up front, instead of a figure that moves with the change set. [`05-cross-cutting.md`](./05-cross-cutting.md) §1.1 already calls that section *fixed*; now it literally is.
+2. **Attribution gets easier.** Every rule is always visible, so any `rule_id` the model cites (FR-6.2a) names a rule it was definitely shown. "The rule was never offered" stops being a possible explanation for a miss.
+3. **A stable prefix is cacheable**, and latency is this project's binding constraint (TBD-2). The static block comes first and never varies, which is the precondition any provider-side prompt cache needs. **Whether our default provider actually caches is unverified** — that is a CF-6 and [`../technical_stack.md`](../technical_stack.md) question, not a design one. The ordering earns its place on reasons 1 and 2 regardless.
+
+**So `applies_when` is a statement, not a filter.** It stays on `PatternRule`, ships inside the static block, and tells the model which files the rule covers:
+
+| Decision | Value | Why |
+|---|---|---|
+| **Shape** | `include`/`exclude` path globs; `include` defaults to `['**/*']`, `exclude` to empty | An omitted `applies_when` means the rule covers every file, which is the right default for a library of five |
+| **Glob dialect** | The FR-3.5 dialect already used for change-set exclusion: `**` spans whole segments, `*` and `?` stay inside one, a pattern with no `/` matches at any depth, full-match against a repo-relative POSIX path | One glob dialect in the tool, and it is the one a user already writes in `.agentic-review.yml` |
+| **Case** | Case-sensitive | Matches git, and matches the path the catch predicate normalises and compares ([`06-verification.md`](./06-verification.md) §1.2, condition 1) |
+| **Who reads it** | **Both.** CF-1 matches it to decide which files are reviewed (below); the model reads it in the static block as each rule's declared scope | The globs are evaluated once, early, for scope — never per rule at review time to decide which rule text to show. The library shown is always the whole library |
+| **What it includes or excludes** | **Files — from the rule's scope, and so from the review** | See *Rule scope is the review scope* below |
+| **Failure modes** | Two: a rule applied outside its scope is a **false positive**, caught by the FP rate over clean cases (FR-6.2f); a scope narrower than the author intended leaves files **unreviewed**, visible only in the stated scope — which is why the drop is recorded with a reason | The first is measured already. The second is why `no-rule-scope` exists as a distinct reason rather than a silent omission |
+
+##### Rule scope is the review scope
+
+**The union of the rules' scopes decides which changed files are reviewed at all.** A file no rule covers is dropped, the same way FR-3.5's exclusions are dropped.
+
+| | |
+|---|---|
+| **Per rule, then unioned — never pooled** | A file is in rule R's scope when R's `include` matches and R's `exclude` does not; the review scope is the union over rules. One rule's `exclude` must not veto another rule's `include` — pooling the excludes would let a rule that skips `**/*.test.ts` silently remove test files from a rule written *for* test files |
+| **Dropped where FR-3.5 drops** | At **CF-1**, beside the configured exclusions, so that "no later stage parses, executes against, or budgets for a file that was never going to be reviewed" — FR-3.5's own words. This works only because the library is static: it loads in **preflight (CF-9)**, before the change set is resolved. The `load_patterns` node keeps its place in the graph, holding the library for attribution (FR-6.2a) and the corpus |
+| **Recorded, with its own reason** | `ChangeSet.excluded` gains a third reason **`rules:no-scope-match`**, beside `default:<rule>` and `config:<pattern>` — the same `<source>:<detail>` shape, so the published schema's pattern stays a rule rather than a list of exceptions *(settled 2026-11-06 by [spec 003](../../specs/003-rule-library/spec.md)'s clarification; this row read `no-rule-scope` until then)*. The stated scope (FR-10.3b) therefore stays true, and the terminal summary (FR-8.1b) can say how many files no rule covered. It is **not** a `Degradation` — nothing failed, exactly as a configured exclusion is not a degradation ([`05-cross-cutting.md`](./05-cross-cutting.md) §2.3) |
+| **Empty review scope** | When rule scope leaves nothing to review, the run says so and is **never presented as a clean review** — the line §2.4 of [`05-cross-cutting.md`](./05-cross-cutting.md) draws between *found nothing* and *never looked*, and AC-7's logic one level up |
+| **The default keeps it harmless** | `include` defaults to `**/*`, so one broadly-scoped rule makes every file reviewable. Dropping engages only when **every** rule is narrow — a deliberate act, not an accident of authoring. v1's five shipped rules (FR-6.3a) must therefore cover TS/JS between them, or the tool reviews less than its user expects |
+
+**Two costs of the stronger reading, stated plainly:**
+
+1. **Scope can improve the measured FP rate for free.** A clean corpus case whose files fall outside every rule's scope emits no findings because nothing was reviewed, not because the reviewer was precise. Narrowing scope then makes the numbers better while the tool gets worse — which is the same gaming FR-6.2f's clean cases exist to prevent. The corpus validates against it ([`06-verification.md`](./06-verification.md) §2); without that check the primary instrument is corruptible.
+2. **It needed a requirement, and design could not supply one.** ✅ **Settled: FR-6.1a, SRS v1.8, 2026-11-06.** FR-3.5's subject is "configured generated, vendored, and build-output paths … a documented default exclusion list", so dropping a file because no *rule* covers it was new observable behaviour that no requirement stated. It went in as a **new requirement under §4.8**, not a clause on FR-3.5: CF-8's semantics belong under CF-8, and FR-3.5 stays untouched as the authority for its own paths. **AC-18** verifies both halves — that a rule-dropped file appears in the stated scope with its reason, and that a file one rule excludes while another includes it is still reviewed, which is what rules out a pooled-exclusion implementation.
+
+**One decline, kept from the withdrawn draft.** `applies_when` holds path globs and nothing else — no `"the file imports fs"`, no content regex, no condition language. A rule that applies only under a semantic condition says so in its own `title`, `wrong` and `correct` prose, where the model reads it as guidance, rather than in a structured field that looks machine-checkable and is not.
+
+**Two consequences, both simplifications:**
+
+1. **The glob translator stays where it is, and so does the layering.** The evaluator is CF-1, which already owns `glob_to_regex` in `core/changeset/exclusion.py`; `core/patterns/` only carries the patterns as data, so nothing moves. Two details keep import contract 6 intact, and both follow from `patterns` being a **Layer-1 capability** ([`01-logical-architecture.md`](./01-logical-architecture.md) §3): the library is loaded by the **preflight phase**, which puts it on the run state, so `core/config/` never imports `core/patterns/`; and CF-1 is handed the scopes as **plain glob lists**, so `core/changeset/` never imports it either. Neither may, in fact — capabilities never import each other, and §3's own remedy for two that must combine is that it is the pipeline's job. Passing the lists is that remedy.
+2. **The corpus check shrinks to an existence check.** With every rule always in the prompt, scope can no longer make a case unsatisfiable; what remains worth validating is that an expectation's `rule_id` names a rule that exists ([`06-verification.md`](./06-verification.md) §2).
+
+**Not decided here.** Whether a *user* may override or narrow a built-in rule's scope, and in what precedence order, is config design and a separate decision. **Which rules were in scope is not a report field** — no v1 requirement asks for it, pattern-coverage reporting being v2 (FR-6.2c). And a **grouped, multi-call review** for large change sets, where a planner explores related context and emits groups, changes only the user message: the same static prefix is re-sent per group, so grouping makes caching pay more rather than less. What that mode owes before it can land — an amendment to SRS §2.1's "the model is called once", a per-bundle answer for FR-5.7's ceiling and FR-8.2d's totals, a corpus unit under FR-6.2d, and a partial-run degradation under FR-11.2 — belongs with the CF-2/CF-4 context work, which is being designed separately.
+
+**Where this stops being right.** At v2 breadth (FR-6.3) a library of sixty rules is a large static block: cheap on a cache hit, and paid in full on every miss. The lever to reach for then is fewer, better rules or a coarser static grouping — not a return to per-run selection, which costs the prefix its stability and the metric its clean failure mode.
 
 ---
 
