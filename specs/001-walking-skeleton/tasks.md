@@ -230,6 +230,20 @@ decision the documents do not make stops and reports it (Principle I) — it is 
 
 - [ ] T086 [US4] Extend `src/agentic_review/core/changeset/resolve.py` with the `staged` and `range` scopes per research R-4, and `src/agentic_review/core/changeset/summary.py` so `measure_new_files` reads the reviewed version for each scope (`git show :path`, `git show HEAD:path`). **Commit scope:** `resolve` handles `commit` (first parent, or the empty tree when `REF^1` does not exist; no `ls-files --others`), reusing the tracked-comparison path the other scopes use; `measure_new_files` reads `git show REF:path`. No read of the working tree or the index on this path. **Phase 10:** `range` is built on `diff_branches`, and `_collect` is the shared diff-to-files path (T119); add `staged` and `commit` on it
 - [ ] T087 [US4] Extend `src/agentic_review/agents/pipeline_agent.py` (was `core/pipeline/run.py`; moved by ADR-0009/ADR-0010): scope precedence flag → config → default with `was_defaulted` true only when neither named it, and configured `exclude` passed to `resolve` — both **already present** in the `resolve_change_set` node, so verify rather than rebuild; when `reviewable_files` is empty, skip assembly and review and build a `nothing-to-review` report, as a conditional edge `resolve_change_set → build_report` so the graph stays acyclic and the skip is visible (FR-006, FR-010). **Langfuse:** a nothing-to-review trace has no `generation`, and the resolved scope kind is a trace tag (T106). **Commit scope:** `request.commit` set → scope kind `commit` ahead of the config's `scope`, `was_defaulted` false, and `ScopeRequest.commit` passed to `resolve`. **Phase 10:** `ScopeRequest.head` is passed, and a pull request opened by preflight bypasses `resolve` (T123); the nothing-to-review edge must cover that path too
+
+  > **Partly closed 2026-11-06 by feature 003's T046 — deliberately not ticked.** The *nothing-to-review route*
+  > this task describes is built: `_route_after_change_set` in `src/agentic_review/agents/pipeline_agent.py` is a
+  > conditional edge `resolve_change_set → build_report` taken when `reviewable_files` is empty, `_build_report`
+  > sets the `nothing-to-review` completion status, the graph stays acyclic, and
+  > `tests/integration/test_story3_rule_scope.py` covers it (model called zero times, report still written,
+  > verdict `nothing-to-review` at exit 0, degradation list empty). The scope-precedence clause was verified as
+  > already present, as this task says to.
+  >
+  > **What is still open, and why the box stays unticked:** the **commit scope** clause needs `ScopeRequest.commit`,
+  > `ReviewRequest.commit` and `ScopeKind` gaining `"commit"` — none of which exist, and all of which belong to
+  > T086/T088/T111 here. The **Langfuse** clause depends on T106, also open. Ticking this task would record
+  > unbuilt work as done, which 003's own task note warns against: an open task that is secretly done is bad, and
+  > a closed task that is secretly open is worse. When T086/T088/T106/T111 land, tick this with them.
 - [ ] T088 [US4] Add `--scope working-tree|staged|range|commit` to `review` in `src/agentic_review/cli/app.py` (`--commit` itself arrives with T082; `commit` is accepted here so that `--scope commit --commit REF` is valid). **Phase 10:** `--scope` exists and offers `working-tree` and `range`; add `staged` and `commit` to `OFFERED_SCOPES`
 - [ ] T089 [US4] Run `uv run lint-imports` and `uv run pytest`; fix until green
 
