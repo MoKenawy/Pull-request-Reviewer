@@ -6,16 +6,10 @@ the test-script prerequisite arrives in feature 002 — AC-9).
 | # | Check | For a pull request (``--pr``) |
 |---|---|---|
 | 1 | Inside a git repository | The URL is a GitHub pull request URL — no repository is needed |
-| 2 | Configuration valid | Only ``--config`` or the defaults: never a file from the pull request (FR-10.3d) |
-| 3 | Rule library loads | The same, and a relative ``patterns.rules`` has no repository root to resolve against |
-| 4 | Scope arguments coherent | ``--pr`` excludes ``--scope`` and ``--head`` |
-| 5 | Credential available | The same |
-| 6 | Named refs exist | The pull request is opened — the only step that uses the network, and so the last |
-
-Check 3 is here, and not in the ``load_patterns`` node, for two reasons: preflight is the only stage permitted to
-stop a run, which is what a malformed rules file needs (spec 003 FR-005, FR-027 — exit 3 with no provider call);
-and CF-1 needs the rules' scopes *before* it resolves the change set, while ``load_patterns`` runs after it
-(research R-7). It sits before the credential check so that "no provider call on this path" holds by construction.
+| 2 | Configuration valid | Only ``--config``, the environment or the defaults — never a file from the PR (FR-10.3d) |
+| 3 | Scope arguments coherent | ``--pr`` excludes ``--scope`` and ``--head`` |
+| 4 | Credential available | The same |
+| 5 | Named refs exist | The pull request is opened — the only step that uses the network, and so the last |
 
 The ``staged`` scope and its checks arrive with User Story 4. Until then check 3 refuses it: the config schema accepts
 it, so a file written now stays valid later (FR-1.2d), but asking for it must not reach the resolver.
@@ -27,7 +21,7 @@ looked up again by the one step that gives it to the model client.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 from agentic_review.core.changeset.pull_request import (
@@ -38,6 +32,7 @@ from agentic_review.core.changeset.pull_request import (
 )
 from agentic_review.core.changeset.resolve import GitNotFound, have_merge_base, locate_repository, ref_exists
 from agentic_review.core.config.credentials import CredentialProblem, CredentialSources, find_credential
+from agentic_review.core.config.environment import AgentOverrides, apply_agent_overrides
 from agentic_review.core.config.loader import ConfigError, LoadedSettings, load_settings
 from agentic_review.core.config.redact import redact
 from agentic_review.core.config.settings import Settings
@@ -114,6 +109,7 @@ def preflight(
     head: str | None = None,
     pr: str | None = None,
     pull_requests: PullRequestSource | None = None,
+    overrides: AgentOverrides = AgentOverrides(),
 ) -> PreflightFailure | PreflightOk:
     secret = sources.from_env.reveal() if sources.from_env is not None else None
 
@@ -141,7 +137,8 @@ def preflight(
                 f"{_FOOTER} Run the review from inside the repository you want reviewed."
             )
 
-    # 2 · configuration — never read from a pull request, whose author could redirect the provider URL (FR-10.3d)
+    # 2 · configuration — never read from a pull request, whose author could redirect the provider URL (FR-10.3d).
+    # The environment's model and endpoint are applied here, after the file and before any CLI flag (05 §4.1).
     try:
         if config_path is not None:
             loaded = load_settings(config_path, explicit=True, display_name=str(config_path))
@@ -149,6 +146,7 @@ def preflight(
             loaded = load_settings(repo_root / CONFIG_FILE_NAME, explicit=False, display_name=CONFIG_FILE_NAME)
         else:
             loaded = LoadedSettings(Settings(), (), scope_from_file=False)
+        loaded = replace(loaded, settings=apply_agent_overrides(loaded.settings, overrides))
     except ConfigError as error:
         return fail(error.message)
 

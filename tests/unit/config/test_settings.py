@@ -8,7 +8,7 @@ from typing import Any
 import pytest
 from pydantic import ValidationError
 
-from agentic_review.core.config.settings import DEFAULT_MODEL, Settings
+from agentic_review.core.config.settings import DEFAULT_BASE_URL, DEFAULT_MODEL, Settings
 
 
 def test_defaults() -> None:
@@ -21,7 +21,7 @@ def test_defaults() -> None:
     assert settings.agent.tool_call_ceiling == 25
     assert settings.agent.investigation_tools is False
     assert settings.agent.model == DEFAULT_MODEL
-    assert settings.agent.base_url == "https://integrate.api.nvidia.com/v1"
+    assert settings.agent.base_url == DEFAULT_BASE_URL  # the two constants are where the endpoint is chosen
     assert settings.agent.temperature == 0
     assert settings.agent.request_timeout_seconds == 60
     assert settings.agent.rate_limit_retry_seconds == 60

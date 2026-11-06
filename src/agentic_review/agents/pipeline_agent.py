@@ -52,6 +52,7 @@ from agentic_review.core.config.credentials import (
     credential_sources,
     find_credential,
 )
+from agentic_review.core.config.environment import AgentOverrides, agent_overrides
 from agentic_review.core.config.redact import redact
 from agentic_review.core.config.settings import AgentSettings
 from agentic_review.core.findings.port import ReviewContext, ReviewOutcome, ReviewPort
@@ -92,6 +93,8 @@ class PipelineDeps:
 
     credentials: CredentialSources
     port_factory: PortFactory
+    agent_overrides: AgentOverrides = AgentOverrides()
+    """The model and endpoint the environment asks for, if it asks: no secret, applied by preflight (05 §4.1)."""
     pull_requests: PullRequestSource = field(default_factory=GitPullRequestSource)
     """How a pull request is read. Today git transport; later the GitHub MCP server (ADR-0011)."""
 
@@ -147,6 +150,7 @@ def _preflight(state: PipelineState, runtime: Runtime[PipelineDeps]) -> Pipeline
             head=run.request.head,
             pr=run.request.pr,
             pull_requests=runtime.context.pull_requests,
+            overrides=runtime.context.agent_overrides,
         )
     if isinstance(checked, PreflightFailure):
         run.result = checked
@@ -404,6 +408,7 @@ def run_review(
     run = PipelineRun(request=request, clock=clock, now=now)
     deps = PipelineDeps(
         credentials=credential_sources(env),
+        agent_overrides=agent_overrides(env),
         port_factory=port_factory or build_review_port,
         pull_requests=pull_requests or GitPullRequestSource(),
     )

@@ -65,7 +65,7 @@ patterns:                            # added 2026-11-06 by feature 003 - see the
 | Field absent → that field's default; merging is **per field**, never whole-section replacement | FR-1.2c, 05 §4.1 |
 | Invalid value, **unknown field**, **duplicate key**, or YAML syntax error → exit 3, naming the file and the dotted field path (or line and column for syntax) | FR-1.2d, spec Assumptions, R-8 |
 | `exclude` is **added to** the defaults | FR-008, SC-009 |
-| Order of precedence: defaults → file → CLI flags | 05 §4.1 |
+| Order of precedence: defaults → file → environment → CLI flags | 05 §4.1 |
 | Settings for unbuilt capabilities: validated, no effect, **one** stderr notice listing the dotted paths that were set | FR-003 |
 | **There is no credential field.** A key such as `apiKey` anywhere in this file is an unknown field, so exit 3 | FR-1.3a, FR-004 |
 
@@ -84,6 +84,17 @@ path segments; `*` and `?` stay within one segment; a pattern with no `/` matche
 
 A configured pattern `p` is recorded as `config:p`. If a path matches both a default and a configured pattern, the
 **default** rule is recorded, because defaults are applied first.
+
+## The model and the endpoint from the environment
+
+| Variable | Sets | |
+|---|---|---|
+| `AGENTIC_REVIEW_MODEL` | `agent.model` | Wins over the file, loses to a CLI flag |
+| `AGENTIC_REVIEW_BASE_URL` | `agent.baseUrl` | The same, and validated as the field is: a value that is not an `http://` or `https://` URL exits 3 naming the variable |
+
+Unset or blank overrides nothing, so `AGENTIC_REVIEW_MODEL=` in a `.env` file reads as absent. No other setting
+can be given this way, and nothing here may hold a credential. For a `--pr` review these apply as usual: they come
+from the reviewer's own environment, never from the pull request (FR-10.3d).
 
 ## The credential
 

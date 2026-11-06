@@ -328,15 +328,28 @@ the S-1 script's usage example, and in the feature 001 contracts and research no
 
 ### Override it without changing code
 
-Put `.agentic-review.yml` at the **root of the repository being reviewed**:
+Two places, in this order of precedence: the file is the project's choice, the environment is yours.
+
+**The repository file** — `.agentic-review.yml` at the **root of the repository being reviewed**:
 
 ```yaml
 agent:
   model: "nvidia/llama-3.1-nemotron-70b-instruct"   # any model your endpoint serves that supports tool calling
+  baseUrl: "https://integrate.api.nvidia.com/v1"
 ```
 
-Other `agent` fields keep their defaults (fields are merged one by one). There is no command-line flag or
-environment variable for the model yet.
+**The environment** — `AGENTIC_REVIEW_MODEL` and `AGENTIC_REVIEW_BASE_URL`, set in the shell or in the same `.env`
+as the key (section 3):
+
+```
+AGENTIC_REVIEW_MODEL=nvidia/llama-3.1-nemotron-70b-instruct
+AGENTIC_REVIEW_BASE_URL=https://integrate.api.nvidia.com/v1
+```
+
+Either way, other `agent` fields keep their defaults (fields are merged one by one), and a variable that is unset
+or blank overrides nothing — `AGENTIC_REVIEW_MODEL=` reads as absent. A `baseUrl` that is not an `http://` or
+`https://` URL stops the run with exit 3 naming the variable or the field, before anything is sent. There is no
+command-line flag for either yet. The resolved pair is reported as `run.model` and `run.provider`.
 
 ### See which models the endpoint lists
 
@@ -367,7 +380,15 @@ agent:
   model: "provider/model-name"
 ```
 
-The key is still read from `AGENTIC_REVIEW_API_KEY`.
+or, without touching the repository's file:
+
+```
+AGENTIC_REVIEW_BASE_URL=https://api.example.com/v1
+AGENTIC_REVIEW_MODEL=provider/model-name
+```
+
+The key is still read from `AGENTIC_REVIEW_API_KEY`, and is sent to whichever endpoint wins — which is why an
+unusable `baseUrl` stops the run instead of being guessed at.
 
 ---
 
