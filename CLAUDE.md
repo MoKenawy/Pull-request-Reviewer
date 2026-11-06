@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Current state
 
-**Feature 001, the walking skeleton, is built** (User Stories 1–2 and tasks Phases 10–11 complete; `specs/001-walking-skeleton/tasks.md` tracks the rest). `src/agentic_review/` has 47 Python modules — CLI, pipeline, and the CF-1/CF-4/CF-5/CF-6/CF-7/CF-9 core functions; CF-2, CF-3 and CF-8 are not built yet (features 004, 002, 003). 427 tests run offline in under two minutes, plus 6 import-linter structural contracts and a GitHub Actions CI matrix on Python 3.12/3.13, Linux and Windows.
+**Feature 001, the walking skeleton, is built** (User Stories 1–2 and tasks Phases 10–11 complete; `specs/001-walking-skeleton/tasks.md` tracks the rest). `src/agentic_review/` has 47 Python modules — CLI, pipeline, and the CF-1/CF-4/CF-5/CF-6/CF-7/CF-9 core functions; CF-2, CF-3 and CF-8 are not built yet (features 004, 002, and — since step 3 was split on 2026-11-06 — 003 for the rule library and 007 for the regression harness). 427 tests run offline in under two minutes, plus 6 import-linter structural contracts and a GitHub Actions CI matrix on Python 3.12/3.13, Linux and Windows.
 
 **Commands** (Python ≥3.12, via [uv](https://docs.astral.sh/uv/)):
 
@@ -85,7 +85,7 @@ These are the ones that make v2 and v3 additions rather than rewrites. Treat a c
 - **FR-2.6g** — the resolver sidecar's absence degrades and reports; it never fails an invocation. An optional prerequisite must not quietly become a required one.
 - **FR-10.3d** *(new in v1.5, ADR-0011)* — a pull request is a stranger's code. Nothing from it is executed (no checkout, no checks) and no configuration is read from it, because the config file names the provider URL the API key is sent to. Everything pull-request-specific stays behind `PullRequestSource` in `core/changeset/pull_request.py`. **Its git-based implementation is interim**: it is to be replaced by one backed by the official GitHub MCP server (`github/github-mcp-server`), which needs its own ADR (a GitHub token, and an MCP client that may not live under `core/`). Do not grow the hand-written reader.
 
-`Docs/agentic-code-review-srs-v1.md` §6 lists seventeen acceptance criteria (AC-1…AC-17; AC-13/14 added in v1.1, AC-15/16 later, AC-17 in v1.6). AC-5 and AC-7 are flagged as the ones to defend under schedule pressure; AC-8, AC-10 and AC-12 are the cheap structural checks on the constraints above. AC-10's import-contract wording was updated alongside FR-5.8 in v1.2.
+`Docs/agentic-code-review-srs-v1.md` §6 lists eighteen acceptance criteria (AC-1…AC-18; AC-13/14 added in v1.1, AC-15/16 later, AC-17 in v1.6, AC-18 in v1.8 with FR-6.1a). AC-5 and AC-7 are flagged as the ones to defend under schedule pressure; AC-8, AC-10 and AC-12 are the cheap structural checks on the constraints above. AC-10's import-contract wording was updated alongside FR-5.8 in v1.2.
 
 ### Planned stack and environment
 

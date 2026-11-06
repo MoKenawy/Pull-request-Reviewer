@@ -1,6 +1,6 @@
 """Assembling what the model is given (FR-2.5b, data-model §4, Docs/design/05-cross-cutting.md §2.4).
 
-**The wording below is unmeasured.** Prompt quality is judged only once feature 003's regression corpus exists
+**The wording below is unmeasured.** Prompt quality is judged only once feature 007's regression corpus exists
 (SRS Appendix A, Principle VI): until then, no claim that one wording reviews better than another has evidence
 behind it. What the structure does have a reason for is the shape the model must produce, because a reply that
 ignores it is rejected at the call boundary rather than turned into a finding. The prompt carries only the
