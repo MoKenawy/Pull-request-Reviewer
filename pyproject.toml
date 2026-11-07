@@ -55,6 +55,7 @@ source_modules = [
     "agentic_review.agents",
     "agentic_review.core.pipeline",
     "agentic_review.core.changeset",
+    "agentic_review.core.patterns",
     "agentic_review.core.assembly",
     "agentic_review.core.findings",
     "agentic_review.core.review",
@@ -74,6 +75,7 @@ source_modules = [
     "agentic_review.core.findings",
     "agentic_review.core.review",
     "agentic_review.core.output",
+    "agentic_review.core.patterns",
     "agentic_review.core.config",
 ]
 forbidden_modules = ["agentic_review.core.changeset._git"]
@@ -107,7 +109,7 @@ layers = [
     "agentic_review.agents",
     "agentic_review.core.pipeline",
     "agentic_review.core.assembly | agentic_review.core.output | agentic_review.core.review",
-    "agentic_review.core.changeset",
+    "agentic_review.core.changeset | agentic_review.core.patterns",
     "agentic_review.core.findings | agentic_review.core.config",
 ]
 
@@ -126,6 +128,7 @@ source_modules = [
     "agentic_review.core.findings",
     "agentic_review.core.review",
     "agentic_review.core.config",
+    "agentic_review.core.patterns",
 ]
 forbidden_modules = ["jinja2", "markupsafe"]
 allow_indirect_imports = true

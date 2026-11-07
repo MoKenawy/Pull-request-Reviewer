@@ -36,6 +36,7 @@ from agentic_review.core.config.environment import AgentOverrides, apply_agent_o
 from agentic_review.core.config.loader import ConfigError, LoadedSettings, load_settings
 from agentic_review.core.config.redact import redact
 from agentic_review.core.config.settings import Settings
+from agentic_review.core.patterns import PatternLibrary, PatternLibraryError, load_library
 
 CONFIG_FILE_NAME = ".agentic-review.yml"
 _FOOTER = "Nothing was reviewed."
@@ -53,8 +54,16 @@ class PreflightOk:
     """None when the change comes from a pull request: there is no repository on this machine."""
     loaded: LoadedSettings
     """No credential here, deliberately: see the module docstring."""
+    library: PatternLibrary
+    """CF-8's rules, loaded and validated once (spec 003 FR-001, FR-005).
+
+    Read three times after this: as globs by CF-1, as text by the prompt, as identifiers by finding validation.
+    It reaches the invocation trace with the rest of the pipeline state, which is what states the library's
+    ``source`` and its rule count there (spec 003 FR-028, SRS FR-11.3) — carried on the state rather than cached
+    behind a loader, for traceability, with the cost recorded as design gap 003/D-7.
+    """
     pull_request: OpenedPullRequest | None = None
-    """Opened by check 5. Whoever holds this must ``close`` it when the run is over."""
+    """Opened by check 6. Whoever holds this must ``close`` it when the run is over."""
 
 
 RESOLVED_SCOPES = ("working-tree", "range")
@@ -141,7 +150,28 @@ def preflight(
     except ConfigError as error:
         return fail(error.message)
 
-    # 3 · scope arguments coherent
+    # 3 · the rule library — before the credential check, so "no provider call on this path" holds by construction
+    configured_rules = loaded.settings.patterns.rules
+    extra: Path | None = None
+    if configured_rules is not None:
+        if configured_rules.is_absolute():
+            extra = configured_rules
+        elif repo_root is not None:
+            extra = repo_root / configured_rules
+        else:
+            # A pull-request review has no repository root. Resolving against the current directory would read a
+            # file from wherever the tool happened to be run, which is exactly what FR-10.3d refuses for the
+            # configuration itself. Recorded as design gap 003/D-9 rather than settled quietly.
+            return fail(
+                f"patterns.rules: {str(configured_rules)!r} is relative, and a --pr review has no repository "
+                f"root to resolve it against.\nGive an absolute path, or drop the key.\n{_FOOTER}"
+            )
+    try:
+        library = load_library(extra)
+    except PatternLibraryError as error:
+        return fail(f"{error}\n{_FOOTER}")
+
+    # 4 · scope arguments coherent
     kind = "pull-request"
     if pull_request_ref is not None:
         if scope is not None:
@@ -154,12 +184,12 @@ def preflight(
         if problem is not None:
             return fail(problem)
 
-    # 4 · credential
+    # 5 · credential
     credential = find_credential(sources, repo_root)
     if isinstance(credential, CredentialProblem):
         return fail(credential.message)
 
-    # 5 · named refs exist — for a pull request, the only step that reaches the network
+    # 6 · named refs exist — for a pull request, the only step that reaches the network
     if pull_request_ref is not None:
         if pull_requests is None:
             return fail(f"No pull-request source is configured, so {pull_request_ref.url} cannot be read.\n{_FOOTER}")
@@ -167,7 +197,7 @@ def preflight(
             opened = pull_requests.open(pull_request_ref, base=base)
         except PullRequestError as error:
             return fail(error.message)
-        return PreflightOk(repo_root=None, loaded=loaded, pull_request=opened)
+        return PreflightOk(repo_root=None, loaded=loaded, library=library, pull_request=opened)
 
     assert repo_root is not None
     if kind == "range":
@@ -176,4 +206,4 @@ def preflight(
         if problem is not None:
             return fail(problem)
 
-    return PreflightOk(repo_root=repo_root, loaded=loaded)
+    return PreflightOk(repo_root=repo_root, loaded=loaded, library=library)

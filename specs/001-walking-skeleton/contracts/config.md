@@ -42,7 +42,20 @@ agent:
 
 budget:
   maxTokens: 20000                   # PLACEHOLDER - SRS section 8, TBD-3
+
+patterns:                            # added 2026-11-06 by feature 003 - see the note below
+  rules: ./review-rules.yml          # optional; absent means the shipped rule library alone
 ```
+
+> **Added 2026-11-06 — the `patterns` section (feature 003).** This file is the configuration contract for the
+> whole tool rather than for one feature, so a key another feature adds is recorded here rather than in a second
+> place. `patterns.rules` names a file of **additional** rules, which are added to the five shipped with the tool
+> and never substituted for them; a configured identifier colliding with a built-in one is an error rather than an
+> override, and overriding a shipped rule is v2. The document's format, its sources and every failure message are
+> [`specs/003-rule-library/contracts/rules-file.md`](../../003-rule-library/contracts/rules-file.md) §1 and §3. A
+> malformed or missing file fails at preflight with exit 3 and no provider call, the same shape a malformed
+> configuration already has. The path is relative to the repository root; a `--pr` review has no repository root,
+> so a relative path there fails loudly rather than resolving against the current directory (design gap 003/D-9).
 
 ## Rules
 

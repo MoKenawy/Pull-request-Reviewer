@@ -1,0 +1,37 @@
+# Shipped rule — FR-6.3a, and the guardrail FR-016 requires.
+#
+# This is the one shipped rule scoped **to** test files. Every other shipped rule excludes them as production-code
+# rules, so without this one a test-only change would match no rule at all and be set aside entirely — while the
+# instructions explicitly ask for findings about an existing test weakened. It is also what makes AC-18's second
+# clause live rather than hypothetical: a test file that the other four rules exclude and this one includes must
+# still be reviewed, which a pooled implementation of the scope predicate gets wrong.
+rules:
+  - id: weakened-test-assertion
+    title: An assertion is loosened or removed so the test passes without checking what it used to check
+    category: test-evidence
+    defaultSeverity: important
+    appliesWhen:
+      include:
+        - "src/**/*.test.ts"
+        - "src/**/*.test.tsx"
+        - "src/**/*.test.js"
+        - "src/**/*.spec.ts"
+        - "src/**/*.spec.js"
+        - "src/**/__tests__/**"
+        - "tests/**/*.ts"
+        - "tests/**/*.tsx"
+        - "test/**/*.ts"
+        - "lib/**/*.test.ts"
+        - "app/**/*.test.ts"
+        - "app/**/*.test.tsx"
+    wrong: |
+      it("rejects an expired token", async () => {
+        const result = await verify(expiredToken);
+        expect(result).toBeDefined();      // was: expect(result.valid).toBe(false)
+      });
+    correct: |
+      it("rejects an expired token", async () => {
+        const result = await verify(expiredToken);
+        expect(result.valid).toBe(false);
+        expect(result.reason).toBe("expired");
+      });

@@ -1,0 +1,30 @@
+# Shipped rule — FR-6.3a. Scoped to production TS/JS: a test that awaits in a loop is usually doing so on purpose.
+rules:
+  - id: awaited-request-inside-loop
+    title: A request is awaited once per iteration, turning one round trip into one per item
+    category: performance
+    defaultSeverity: important
+    appliesWhen:
+      include:
+        - "src/**/*.ts"
+        - "src/**/*.tsx"
+        - "src/**/*.js"
+        - "src/**/*.mjs"
+        - "lib/**/*.ts"
+        - "lib/**/*.js"
+        - "app/**/*.ts"
+        - "app/**/*.tsx"
+      exclude:
+        - "**/*.test.ts"
+        - "**/*.test.tsx"
+        - "**/*.test.js"
+        - "**/*.spec.ts"
+        - "**/*.spec.js"
+        - "**/__tests__/**"
+    wrong: |
+      const users = [];
+      for (const id of ids) {
+        users.push(await fetchUser(id));   // one round trip per id
+      }
+    correct: |
+      const users = await fetchUsers(ids); // one round trip, or Promise.all where no batch endpoint exists

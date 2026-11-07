@@ -1,0 +1,36 @@
+# Shipped rule — FR-6.3a. Scoped to production TS/JS: a test that deliberately leaves a promise dangling is
+# exercising a failure path, not committing this mistake.
+rules:
+  - id: unawaited-promise-in-try
+    title: A promise created inside try is not awaited, so its rejection escapes the catch
+    category: error-handling
+    defaultSeverity: blocking
+    appliesWhen:
+      include:
+        - "src/**/*.ts"
+        - "src/**/*.tsx"
+        - "src/**/*.js"
+        - "src/**/*.mjs"
+        - "lib/**/*.ts"
+        - "lib/**/*.js"
+        - "app/**/*.ts"
+        - "app/**/*.tsx"
+      exclude:
+        - "**/*.test.ts"
+        - "**/*.test.tsx"
+        - "**/*.test.js"
+        - "**/*.spec.ts"
+        - "**/*.spec.js"
+        - "**/__tests__/**"
+    wrong: |
+      try {
+        void save(record);          // rejects after try has already returned
+      } catch (error) {
+        report(error);              // never runs: the rejection became unhandled
+      }
+    correct: |
+      try {
+        await save(record);
+      } catch (error) {
+        report(error);
+      }

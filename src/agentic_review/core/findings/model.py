@@ -206,7 +206,13 @@ class FindingDraft(WireModel):
     rule_id: Annotated[
         str | SkipJsonSchema[None],
         BeforeValidator(_optional_str),
-        Field(description="Leave unset. No pattern rules are loaded, so any value here is discarded."),
+        Field(
+            description=(
+                "The identifier of the review rule this finding came from, spelled exactly as it appears in the "
+                "rules you were given. Leave it out when the finding is your own observation rather than a "
+                "rule's — most findings are. An identifier that names no rule you were given is rejected."
+            )
+        ),
     ] = None
     evidence: Annotated[
         EvidenceRef,

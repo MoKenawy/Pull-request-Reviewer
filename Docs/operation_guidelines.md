@@ -158,14 +158,21 @@ uv run --env-file .env agentic-review review
 
 Run from **inside** that repository, and point uv at this project. The paths below are this machine's; adjust them.
 
+> **Give `--env-file` forward slashes, even on Windows** (uv 0.11.29). uv strips the backslashes out of that
+> argument, so `--env-file "D:\Projects\...\.env"` fails with
+> `error: No environment file found at: D:ProjectsDEPI-industry-projectPull-request-Reviewer.env` and exit 2 —
+> every separator gone. `--project` is **not** affected and takes either form, which is what makes this easy to
+> misdiagnose. Writing both with `/` is simplest; Windows accepts forward slashes everywhere uv passes them on,
+> and a relative `--env-file .env` from the project root needs no path at all. `cd` is unaffected.
+
 ```powershell
-$AR = "D:\Projects\DEPI-industry-project\Pull request Reviewer"
+$AR = "D:/Projects/DEPI-industry-project/Pull-request-Reviewer"
 cd C:\path\to\some-typescript-repo
-uv run --project $AR --env-file "$AR\.env" agentic-review review
+uv run --project $AR --env-file "$AR/.env" agentic-review review
 ```
 
 ```bash
-AR="/d/Projects/DEPI-industry-project/Pull request Reviewer"
+AR="/d/Projects/DEPI-industry-project/Pull-request-Reviewer"
 cd /path/to/some-typescript-repo
 uv run --project "$AR" --env-file "$AR/.env" agentic-review review
 ```
@@ -185,7 +192,7 @@ uncommitted edits are not part of a range.
 ### Review a public pull request
 
 ```powershell
-uv run --project $AR --env-file "$AR\.env" agentic-review review --pr https://github.com/OWNER/REPO/pull/123
+uv run --project $AR --env-file "$AR/.env" agentic-review review --pr https://github.com/OWNER/REPO/pull/123
 ```
 
 It works from **any directory**; no local copy of the repository is needed.
@@ -213,10 +220,10 @@ unused variable. The change also contains an excluded build file, a Markdown fil
 new file, so every part of the summary shows up.
 
 ```powershell
-$AR = "D:\Projects\DEPI-industry-project\Pull request Reviewer"
-uv run --project $AR python "$AR\scripts\make_review_demo.py"     # creates ..\review-demo next to the project
-cd "$AR\..\review-demo"
-uv run --project $AR --env-file "$AR\.env" agentic-review review
+$AR = "D:/Projects/DEPI-industry-project/Pull-request-Reviewer"
+uv run --project $AR python "$AR/scripts/make_review_demo.py"     # creates ../review-demo next to the project
+cd "$AR/../review-demo"
+uv run --project $AR --env-file "$AR/.env" agentic-review review
 ```
 
 Compare the findings with `PLANTED_DEFECTS.md` in the demo repository. Rebuild it with `--force`, or put it elsewhere
@@ -556,6 +563,7 @@ the JSON.
 |---|---|---|
 | `... is not inside a git repository.` (exit 3) | Run outside a repository | `cd` into the repository |
 | `git was not found on PATH` (exit 3) | git not installed or not on `PATH` | Install git |
+| `error: No environment file found at: D:ProjectsDEPI...env` (exit **2**, from uv, before the tool starts) | `--env-file` was given a Windows path with backslashes, and uv strips them. `--project` is not affected, so only half the command looks wrong | Use forward slashes: `--env-file "$AR/.env"`, or run from the project root with `--env-file .env`. Note exit 2 is also the tool's "no judgement", so check whether the tool ran at all |
 | `No provider credential was found. Looked in: ...` (exit 3) | No key in the environment or the user-level file | Section 3. With `.env`, remember `--env-file` |
 | `The user-level credential file ... is inside the repository` (exit 3) | `APPDATA` or `XDG_CONFIG_HOME` points inside the reviewed repository | Move the file, or use the environment variable |
 | `Error in .agentic-review.yml` / `  agent.toolCallCeling: Extra inputs are not permitted` (exit 3) | Misspelt or unknown field | Fix the named field |

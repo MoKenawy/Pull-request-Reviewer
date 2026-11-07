@@ -17,7 +17,11 @@ from agentic_review.core.assembly.prompt import (
     assemble,
     load_instructions,
     prompt_text,
+    system_message,
+    user_message,
 )
+from agentic_review.core.patterns import load_library, rules_block
+from agentic_review.core.patterns.render import RULES_HEADING
 from agentic_review.core.changeset.model import ChangedFile, ChangeSet, Hunk
 from agentic_review.core.config.settings import BudgetSettings
 from agentic_review.core.findings.port import ReviewContext, ReviewedFile
@@ -156,3 +160,87 @@ def test_explicit_instructions_override_the_loaded_prompt() -> None:
     assert context.instructions == "Only this."
     text = prompt_text(context.instructions, context.material_statement, context.diff_section)
     assert context.estimated_tokens == estimate_tokens(text)
+
+
+# --- the rule library in the prompt (spec 003 FR-006 … FR-010, SC-004; research R-2, R-8) ---------------------------
+
+
+LIBRARY = load_library()
+BLOCK = rules_block(LIBRARY)
+
+
+def _assemble_with_rules(change_set: ChangeSet | None = None, counts: dict[str, int] | None = None) -> ReviewContext:
+    result = assemble(
+        change_set if change_set is not None else CHANGE_SET,
+        counts if counts is not None else {"src/app.ts": 40, "lib/new.js": 31},
+        BudgetSettings(),
+        rules_block=BLOCK,
+        rule_ids=LIBRARY.ids,
+    )
+    assert isinstance(result, ReviewContext)
+    return result
+
+
+def test_the_rules_block_lands_in_the_system_message_and_never_in_the_user_message() -> None:
+    """research R-2. Our code appends the block, so a prompt-store failure can never drop the whole library."""
+    context = _assemble_with_rules()
+    system = system_message(context.instructions, context.rules_block)
+    user = user_message(context.material_statement, context.diff_section)
+    assert RULES_HEADING in system and RULES_HEADING not in user
+    for rule in LIBRARY.rules:
+        assert rule.id in system and rule.id not in user
+
+
+def test_the_system_message_is_the_instructions_followed_by_the_rules_block() -> None:
+    context = _assemble_with_rules()
+    system = system_message(context.instructions, context.rules_block)
+    assert system.startswith(context.instructions)
+    assert system.endswith(context.rules_block)
+    assert system.index(context.instructions) < system.index(RULES_HEADING)
+
+
+def test_passing_no_library_reproduces_the_previous_behaviour_exactly() -> None:
+    context = _assemble()
+    assert context.rules_block == ""
+    assert system_message(context.instructions, context.rules_block) == context.instructions
+    assert context.material.rule_ids == frozenset()
+
+
+def test_the_whole_prompt_estimate_includes_the_rules_block() -> None:
+    """FR-009: rules cannot beat the budget by being uncounted."""
+    with_rules = _assemble_with_rules()
+    without = _assemble()
+    system = system_message(with_rules.instructions, with_rules.rules_block)
+    text = prompt_text(system, with_rules.material_statement, with_rules.diff_section)
+    assert with_rules.estimated_tokens == estimate_tokens(text)
+    assert with_rules.estimated_tokens > without.estimated_tokens
+
+
+def test_the_record_of_what_the_run_showed_the_model_carries_the_rule_identifiers() -> None:
+    """FR-010. This is what makes an unknown identifier rejectable rather than merely unrecognised."""
+    assert _assemble_with_rules().material.rule_ids == LIBRARY.ids
+    assert len(LIBRARY.ids) >= 5
+
+
+def test_the_fixed_section_is_byte_identical_across_two_different_change_sets() -> None:
+    """SC-004, and the precondition for any prompt caching — which stays an unverified benefit (Principle VI)."""
+    other = ChangeSet(
+        repo_root=Path("/repo"),
+        scope=ResolvedScope(kind="staged", was_defaulted=False, description="staged changes"),
+        files=(_file("src/totally/different.ts", hunks=(HUNK_B,)),),
+        excluded=(),
+    )
+    first = _assemble_with_rules()
+    second = _assemble_with_rules(other, {"src/totally/different.ts": 9})
+    assert first.diff_section != second.diff_section
+    assert system_message(first.instructions, first.rules_block) == system_message(
+        second.instructions, second.rules_block
+    )
+
+
+def test_the_instructions_say_how_to_use_the_rules_and_to_cite_one(monkeypatch: pytest.MonkeyPatch) -> None:
+    """FR-006, FR-008, T030. The 'and nothing else' sentence stopped being true when the library arrived."""
+    assert "and nothing else" not in INSTRUCTIONS
+    assert "ruleId" in INSTRUCTIONS
+    lowered = INSTRUCTIONS.lower()
+    assert "not a checklist" in lowered

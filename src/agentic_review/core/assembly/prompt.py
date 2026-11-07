@@ -27,7 +27,8 @@ from agentic_review.core.findings.port import ReviewContext, ReviewedFile, RunMa
 
 INSTRUCTIONS = """\
 You are an experienced TypeScript/JavaScript reviewer. You are reviewing one change. You are given the complete diff \
-of every file under review, and nothing else: no test results, no other files, no history.
+of every file under review, together with the review rules below. You are given nothing else: no test results, no \
+other files, no history.
 
 # How to report
 
@@ -61,6 +62,17 @@ authorisation or validation step.
 
 Do not report: formatting or style, preferences with no consequence you can state, code the change did not touch, \
 or praise. Do not restate what the diff does. Report each problem once.
+
+# The review rules
+
+The rules at the end of this message are guidance to apply while you read the diff, **not a checklist to work \
+through**. Do not report a rule as violated unless the three conditions above hold for it as well, and do not \
+remark that a rule was satisfied. A change that matches no rule may still have problems worth reporting, and a \
+change a rule covers may have none.
+
+Each rule carries an identifier and the paths it applies to. When a finding comes from one of these rules, put \
+that rule's identifier in the `ruleId` argument, spelled exactly as it appears. When a finding is your own \
+observation rather than a rule's, leave `ruleId` out: an identifier that names no rule listed here is rejected.
 """
 
 MATERIAL_STATEMENT = "No checks were run. No related context was gathered."
@@ -118,9 +130,37 @@ def _system_text(prompt: object) -> str:
     return text.replace("\\\n", "")
 
 
-def prompt_text(instructions: str, material_statement: str, diff_section: str) -> str:
-    """The full text sent to the model: the system message, then the user message. The budget is estimated over it."""
-    return f"{instructions}\n\n{user_message(material_statement, diff_section)}"
+def system_message(instructions: str, rules_block: str = "") -> str:
+    """The prompt's **static prefix**: the instructions, then the whole rule library (FR-006, FR-007, research R-2).
+
+    Both halves are run-independent, which is what makes this a constant rather than a figure that moves with the
+    change set — and the precondition for any prompt caching, which stays an unverified benefit rather than a
+    claimed one. The instructions may come from the managed prompt store or from the built-in fallback; the rules
+    block is **always ours**, so a fetch timeout can degrade the wording but can never drop the library.
+
+    An empty block reproduces the behaviour before the library existed, byte for byte.
+    """
+    return instructions if not rules_block else f"{instructions}\n{rules_block}"
+
+
+def fixed_section_tokens(instructions: str, rules_block: str = "") -> int:
+    """The static prefix's estimated size — the fixed section of ``Docs/design/05-cross-cutting.md`` §1.1.
+
+    This lives beside ``system_message`` rather than in ``budget.py`` because ``budget.py`` is imported *by* this
+    module: putting it there would need either an import cycle or a second copy of the join, and the join is the
+    thing that must not be duplicated. What ``budget.py`` owns is the limit; what this owns is the shape.
+
+    Per-section allocation and eviction are **not** built: FR-2.5a's budgeting is feature 004's (research R-8).
+    """
+    return estimate_tokens(system_message(instructions, rules_block))
+
+
+def prompt_text(system: str, material_statement: str, diff_section: str) -> str:
+    """The full text sent to the model: ``system`` (see ``system_message``), then the user message.
+
+    The budget is estimated over this, so the rules block cannot beat the budget by being uncounted (FR-009).
+    """
+    return f"{system}\n\n{user_message(material_statement, diff_section)}"
 
 
 def user_message(material_statement: str, diff_section: str) -> str:
@@ -149,26 +189,41 @@ def assemble(
     line_counts: Mapping[str, int],
     budget: BudgetSettings,
     instructions: str | None = None,
+    rules_block: str = "",
+    rule_ids: frozenset[str] = frozenset(),
 ) -> ReviewContext | BudgetExhausted:
     """``instructions`` overrides the system prompt; by default it is loaded as ``load_instructions`` describes.
 
+    ``rules_block`` is CF-8's library, **already rendered** by the ``load_patterns`` node, and ``rule_ids`` are the
+    identifiers that render showed the model. They arrive as a plain string and a plain set of strings for the same
+    reason CF-1 receives plain glob tuples: the capability owns its data, and nothing downstream needs to know the
+    rule types exist (research R-3, R-7). Both empty reproduces the behaviour before the library existed.
+
+    **Every** loaded rule is in the block, every review, with no per-run selection of a subset (FR-006) — the
+    library does not vary, so it belongs in the static prefix whole.
+
     The whole prompt, or ``BudgetExhausted`` when its estimate exceeds ``budget.maxTokens`` — never a part of it
-    (FR-2.5b, FR-11.2).
+    (FR-2.5b, FR-11.2). A static prefix raises every prompt's floor, so a change set that fitted before may now be
+    refused; that is reported with the fixed section's share named, never silent (research R-8).
     """
     if instructions is None:
         instructions = load_instructions(os.environ).text
     diff_section = _diff_section(change_set)
-    estimated = estimate_tokens(prompt_text(instructions, MATERIAL_STATEMENT, diff_section))
+    fixed = fixed_section_tokens(instructions, rules_block)
+    system = system_message(instructions, rules_block)
+    estimated = estimate_tokens(prompt_text(system, MATERIAL_STATEMENT, diff_section))
     if estimated > budget.max_tokens:
-        return BudgetExhausted(estimated_tokens=estimated, limit=budget.max_tokens)
+        return BudgetExhausted(estimated_tokens=estimated, limit=budget.max_tokens, fixed_section_tokens=fixed)
     material = RunMaterial(
         reviewed_files={
             f.path: ReviewedFile(line_count=line_counts[f.path], hunk_count=len(f.hunks))
             for f in change_set.reviewable_files
-        }
+        },
+        rule_ids=rule_ids,
     )
     return ReviewContext(
         instructions=instructions,
+        rules_block=rules_block,
         material_statement=MATERIAL_STATEMENT,
         diff_section=diff_section,
         estimated_tokens=estimated,

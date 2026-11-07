@@ -8,8 +8,19 @@ from typing import Any
 from agentic_review.core.findings.model import FindingDraft
 from agentic_review.core.findings.report import ReviewReport
 
-SCHEMA_VERSION = "1.0"
-"""Hand-set, never derived from the package version: a patch release must not renumber the schema (02 §4)."""
+SCHEMA_VERSION = "1.1"
+"""Hand-set, never derived from the package version: a patch release must not renumber the schema (02 §4).
+
+**1.0 → 1.1, feature 003.** ``ExcludedPath.rule`` gained a third source, ``rules:no-scope-match``, for a file no
+loaded rule's declared scope covers (SRS FR-6.1a). An added enum value is a **minor** bump by ``02 §4``'s own
+versioning table, and it lands in the same change as the behaviour — a schema that cannot express what the tool
+now reports would make FR-014 undeliverable.
+
+**This build does not read 1.0 reports.** ``core.output.load`` refuses any version but this one, so a report on
+disk from an earlier build no longer loads with ``agentic-review render``. That is accepted rather than papered
+over: nothing is published yet, and inventing minor-version tolerance here would be behaviour no requirement asks
+for. Recorded in ``specs/003-rule-library/implementation-notes.md``.
+"""
 
 TOOL_NAME = "emit_finding"
 TOOL_DESCRIPTION = (

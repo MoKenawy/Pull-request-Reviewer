@@ -10,6 +10,7 @@ from typing import Any
 import pytest
 
 from agentic_review.core.findings.port import ReviewedFile, RunMaterial
+from agentic_review.core.patterns import load_library
 from agentic_review.core.findings.validation import (
     Accepted,
     Rejected,
@@ -146,3 +147,24 @@ def test_non_object_arguments_are_rejected(args: Any) -> None:
 def test_unverified_evidence_is_accepted() -> None:
     result = validate_call("emit_finding", finding_args(evidence={"kind": "unverified", "reason": "diff only"}), MATERIAL)
     assert isinstance(result, Accepted)
+
+
+def test_a_finding_citing_a_rule_from_the_real_shipped_library_keeps_its_identifier() -> None:
+    """spec 003 FR-018, FR-019, SC-002.
+
+    The identifiers come from a **loaded library** rather than a hand-built set, so this test fails if the shipped
+    rules stop loading or an identifier is renamed — which the hand-built set above cannot notice.
+    """
+    library = load_library()
+    cited = sorted(library.ids)[0]
+    material = RunMaterial(reviewed_files=MATERIAL.reviewed_files, rule_ids=library.ids)
+
+    accepted = validate_call("emit_finding", finding_args(ruleId=cited), material)
+    assert isinstance(accepted, Accepted) and accepted.draft.rule_id == cited and accepted.note is None
+
+    # A finding of the model's own, with no rule behind it, stays valid and carries nothing (FR-018).
+    bare = validate_call("emit_finding", finding_args(), material)
+    assert isinstance(bare, Accepted) and bare.draft.rule_id is None and bare.note is None
+
+    unknown = validate_call("emit_finding", finding_args(ruleId="no-such-rule"), material)
+    assert isinstance(unknown, Rejected) and "no-such-rule" in unknown.reason

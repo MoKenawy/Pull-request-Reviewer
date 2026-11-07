@@ -7,6 +7,8 @@ which is what keeps template work free of provider calls.
 
 from __future__ import annotations
 
+from agentic_review.core.findings.schema import SCHEMA_VERSION
+
 from typing import Any
 
 from agentic_review.core.findings.report import ReviewReport
@@ -15,14 +17,14 @@ from agentic_review.core.findings.report import ReviewReport
 def report(**overrides: Any) -> ReviewReport:
     """The canonical two-finding report. Keyword arguments replace top-level keys, by alias."""
     document: dict[str, Any] = {
-        "schemaVersion": "1.0",
+        "schemaVersion": SCHEMA_VERSION,
         "run": {
             "startedAt": "2026-09-17T10:04:11Z", "durationMs": 20,
             "stageDurationsMs": {"preflight": 1, "changeSet": 2, "assembly": 3, "review": 4, "output": 5},
             "toolCallCeiling": 25, "investigationToolsEnabled": False,
             "toolCallsTotal": 2, "toolCallsEmission": 2, "toolCallsInvestigation": 0, "repairTurns": 0,
             "completionStatus": "emitted", "model": "m", "provider": "p", "sampling": {"temperature": 0},
-            "budgetLimit": 20000, "budgetHit": False, "schemaVersion": "1.0", "toolVersion": "0.1.0",
+            "budgetLimit": 20000, "budgetHit": False, "schemaVersion": SCHEMA_VERSION, "toolVersion": "0.1.0",
         },
         "changeSummary": {
             "scope": {"kind": "working-tree", "wasDefaulted": True,
@@ -38,10 +40,10 @@ def report(**overrides: Any) -> ReviewReport:
         },
         "evidence": {},
         "findings": [
-            {"id": "f-1", "schemaVersion": "1.0", "turnIndex": 0, "fingerprint": "a" * 12, "file": "src/app.ts",
+            {"id": "f-1", "schemaVersion": SCHEMA_VERSION, "turnIndex": 0, "fingerprint": "a" * 12, "file": "src/app.ts",
              "startLine": 4, "endLine": 7, "severity": "important", "category": "error-handling",
              "rationale": "The [catch] block swallows the error.", "evidence": {"kind": "diff", "file": "src/app.ts", "hunkIndex": 0}},
-            {"id": "f-2", "schemaVersion": "1.0", "turnIndex": 0, "fingerprint": "b" * 12, "file": "src/app.ts",
+            {"id": "f-2", "schemaVersion": SCHEMA_VERSION, "turnIndex": 0, "fingerprint": "b" * 12, "file": "src/app.ts",
              "startLine": 9, "endLine": 9, "severity": "nit", "category": "maintainability",
              "rationale": "Name is unclear.", "evidence": {"kind": "unverified", "reason": "style judgement"}},
         ],

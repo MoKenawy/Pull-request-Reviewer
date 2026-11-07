@@ -56,9 +56,33 @@ class ResolvedScope(ReportModel):
     description: str
 
 
+RULES_NO_SCOPE_MATCH = "rules:no-scope-match"
+"""No loaded rule's declared scope covers this path — the third exclusion source (SRS FR-6.1a, research R-5).
+
+Defined here, in Layer 0, because it is part of the **published report's** vocabulary: both the capability that
+produces it (``core.changeset``) and the renderers that read it (``core.output``) need the one spelling, and
+``01-logical-architecture.md``'s revision note keeps every type in the report schema in ``core/findings/``.
+
+Same ``<source>:<detail>`` shape as ``default:<name>`` and ``config:<pattern>``, so the pattern below stays a rule
+rather than a list of exceptions. It is **not** a degradation: nothing failed.
+"""
+
+
 class ExcludedPath(ReportModel):
     path: str
-    rule: Annotated[str, Field(pattern=r"^(default|config):.+$")]
+    rule: Annotated[str, Field(pattern=r"^(default|config|rules):.+$")]
+    """Why this path is not being reviewed, as ``<source>:<detail>``.
+
+    Three sources, each a different mechanism and each distinguishable — a reviewer who cannot tell "no rule
+    covered this file" from "the tool reviewed it and found nothing" has been told nothing (SRS FR-6.1a):
+
+    * ``default:<name>`` — a built-in exclusion rule matched (FR-3.5)
+    * ``config:<pattern>`` — a configured exclusion pattern matched (FR-3.5)
+    * ``rules:no-scope-match`` — **new in schema 1.1**: no loaded rule's declared scope covers it (FR-6.1a)
+
+    A file that is simply not a reviewed language is *not* here: it stays in ``files`` with a
+    ``notReviewedReason``, which is the fourth distinguishable explanation and a different array (research R-4).
+    """
 
 
 class FileSummary(ReportModel):

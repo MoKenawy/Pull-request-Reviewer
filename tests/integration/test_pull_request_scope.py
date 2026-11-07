@@ -21,6 +21,7 @@ from agentic_review.agents.pipeline_agent import ReviewRequest, Reviewed, run_re
 from agentic_review.agents.review_port import build_review_port
 from agentic_review.cli.app import app
 from agentic_review.core.changeset.diff_parser import synthesise_added_file
+from agentic_review.core.changeset.exclusion import RuleScope
 from agentic_review.core.changeset.model import ChangedFile, ChangeSet
 from agentic_review.core.changeset.pull_request import WORKSPACE_PREFIX, PullRequestError, PullRequestRef
 from agentic_review.core.findings.report import ResolvedScope, ReviewReport
@@ -227,8 +228,12 @@ class InMemoryPullRequest:
 
     def __init__(self) -> None:
         self.closed = False
+        self.rule_scopes: Sequence[RuleScope] | None = None
 
-    def change_set(self, exclude: Sequence[str]) -> ChangeSet:
+    def change_set(self, exclude: Sequence[str], rule_scopes: Sequence[RuleScope] = ()) -> ChangeSet:
+        # The parameter feature 003 added (design gap 003/D-6). This stub records it rather than ignoring it: the
+        # whole point of the seam is that review scope reaches *every* change-set path, not only the git one.
+        self.rule_scopes = rule_scopes
         hunk = synthesise_added_file("export const served = 1;\nexport const elsewhere = 2;\n")
         assert hunk is not None
         return ChangeSet(
@@ -288,6 +293,10 @@ def test_a_source_that_never_touches_git_produces_the_same_kind_of_report(
     assert [(f.file, f.start_line) for f in report.findings] == [("src/served.ts", 2)]
     assert "export const elsewhere = 2;" in model.received[0][1].content
     assert source.opened.closed
+    # The library's declared scopes reached this source too, as plain pattern tuples and nothing more (003/D-6).
+    scopes = source.opened.rule_scopes
+    assert scopes is not None and len(scopes) >= 5
+    assert all(isinstance(include, tuple) and isinstance(exclude, tuple) for include, exclude in scopes)
     _check(report)
     assert _leftovers(temp_root) == []
 

@@ -58,6 +58,7 @@ from agentic_review.core.config.settings import AgentSettings
 from agentic_review.core.findings.port import ReviewContext, ReviewOutcome, ReviewPort
 from agentic_review.core.findings.report import ChangeSummary, Degradation, ReviewReport, ScopeKind
 from agentic_review.core.output.build import build_report
+from agentic_review.core.patterns import rules_block
 from agentic_review.core.pipeline.preflight import PreflightFailure, PreflightOk, preflight
 from agentic_review.core.pipeline.timing import StageTimer
 
@@ -117,6 +118,10 @@ class PipelineRun:
     change_set: ChangeSet | None = None
     change_summary: ChangeSummary | None = None
     line_counts: Mapping[str, int] | None = None
+    rules_block: str = ""
+    """CF-8's library rendered for the prompt, written by ``load_patterns`` and read by ``assemble_context``."""
+    rule_ids: frozenset[str] = frozenset()
+    """The identifiers this run showed the model. What a finding's ``ruleId`` is validated against (FR-010)."""
     context: ReviewContext | None = None
     budget_exhausted: BudgetExhausted | None = None  # the estimate and the limit, when the prompt would not fit
     outcome: ReviewOutcome | None = None
@@ -168,9 +173,12 @@ def _resolve_change_set(state: PipelineState) -> PipelineState:
     assert run.checked is not None
     settings = run.checked.loaded.settings
     with run.timer.stage("changeSet"):
+        # Plain glob lists, never the rule objects: core/changeset/ must not import core/patterns/, which import
+        # contract 6 enforces as a sibling-capability violation (spec 003 FR-013, research R-3).
+        rule_scopes = run.checked.library.scope_globs
         pull_request = run.checked.pull_request
         if pull_request is not None:  # opened by preflight; the source decides how the change is read
-            run.change_set = pull_request.change_set(settings.exclude)
+            run.change_set = pull_request.change_set(settings.exclude, rule_scopes)
             run.change_summary = summarise(run.change_set)
             run.line_counts = pull_request.line_counts(run.change_set)
             return {"run": run}
@@ -182,6 +190,7 @@ def _resolve_change_set(state: PipelineState) -> PipelineState:
             ScopeRequest(kind=scope_kind, base=run.request.base, head=run.request.head),
             settings.exclude,
             was_defaulted=was_defaulted,
+            rule_scopes=rule_scopes,
         )
         run.change_summary = summarise(run.change_set)
         run.line_counts = measure_new_files(run.change_set)
@@ -198,9 +207,25 @@ def _execute_checks(state: PipelineState) -> PipelineState:
     return state
 
 
-# CF-8 · the pattern library the prompt is given — built by feature 003
+# CF-8 · the pattern library the prompt is given
 def _load_patterns(state: PipelineState) -> PipelineState:
-    return state
+    """Render the library and publish its identifiers. It was **loaded** at preflight, not here.
+
+    The node keeps its place and the graph's edges do not move (research R-7, ADR-0009). It cannot do the loading:
+    it sits *after* change-set resolution, and CF-1 needs the rules' scopes before it resolves (FR-6.1a) — while
+    a malformed library has to stop the run, which only preflight may do.
+
+    This stage is **not timed**, deliberately. ``StageDurations`` is a fixed set of five stages and the published
+    report ignores unknown fields, so a ``patterns`` duration would be recorded and then silently dropped — which
+    SRS §8 rule 2 ("every stage records its own duration") and Principle V both refuse. Adding the field is a
+    published-schema change no requirement in this feature asks for, and the same question is owed by feature 002's
+    checks stage and feature 004's parse stage, so it is recorded as design gap 003/D-10 rather than settled here.
+    """
+    run = state["run"]
+    assert run.checked is not None
+    run.rules_block = rules_block(run.checked.library)
+    run.rule_ids = run.checked.library.ids
+    return {"run": run}
 
 
 # CF-4 · the only budget owner
@@ -208,12 +233,33 @@ def _assemble_context(state: PipelineState) -> PipelineState:
     run = state["run"]
     assert run.checked is not None and run.change_set is not None and run.line_counts is not None
     with run.timer.stage("assembly"):
-        assembled = assemble(run.change_set, run.line_counts, run.checked.loaded.settings.budget)
+        assembled = assemble(
+            run.change_set,
+            run.line_counts,
+            run.checked.loaded.settings.budget,
+            rules_block=run.rules_block,
+            rule_ids=run.rule_ids,
+        )
     if isinstance(assembled, BudgetExhausted):
         run.budget_exhausted = assembled
     else:
         run.context = assembled
     return {"run": run}
+
+
+def _route_after_change_set(state: PipelineState) -> str:
+    """Skip straight to the report when no reviewable file remains — feature 001's T087, for this clause.
+
+    Conditional rather than a no-op through the middle nodes, so the graph stays **acyclic** and a trace shows the
+    steps that did not run. Nothing is sent to the model and no prompt is assembled: there is nothing to review.
+
+    The situation has three causes that must stay distinguishable in the report, and all three land here: an empty
+    change set, every changed file excluded, and — new in feature 003 — every changed file outside every loaded
+    rule's declared scope (SRS FR-6.1a, spec 003 FR-015).
+    """
+    change_set = state["run"].change_set
+    assert change_set is not None
+    return "nothing_to_review" if not change_set.reviewable_files else "continue"
 
 
 def _route_after_assembly(state: PipelineState) -> str:
@@ -264,7 +310,10 @@ def _budget_exhausted_degradation(exhausted: BudgetExhausted) -> Degradation:
     """No secret can be in it: it is built from two integers (FR-11.2, research R-15)."""
     detail = (
         f"The assembled prompt is an estimated {exhausted.estimated_tokens} tokens, over the budget.maxTokens limit "
-        f"of {exhausted.limit}. Nothing was sent to the model: the diff is never truncated to fit."
+        f"of {exhausted.limit}. Nothing was sent to the model: the diff is never truncated to fit. "
+        f"The instructions and the review rules account for {exhausted.fixed_section_tokens} of those tokens, "
+        f"whatever the change set; the remaining {exhausted.estimated_tokens - exhausted.fixed_section_tokens} "
+        f"are this change."
     )
     return Degradation(source="CF-4", code="budget-exhausted", detail=detail)
 
@@ -277,10 +326,16 @@ def _build_report(state: PipelineState) -> PipelineState:
         completion = outcome.completion_status
         degradations = list(outcome.degradations)  # already redacted by the review node, the one holder of the secret
         provider = outcome.provider
-    else:  # no review ran: only the budget can have stopped it here
-        assert run.budget_exhausted is not None
+    elif run.budget_exhausted is not None:  # assembled, but the whole prompt would not have fit
         completion = "budget-exhausted"
         degradations = [_budget_exhausted_degradation(run.budget_exhausted)]
+        provider = provider_for(run.agent.base_url)
+    else:  # nothing was reviewable, so no prompt was built and no model was called
+        # Its **own** completion status, not a clean review: "found nothing" and "never looked" must stay
+        # distinguishable (AC-7, AC-13, AC-16). And not a degradation either — nothing failed. A file set aside
+        # for want of a rule is the same kind of thing as a configured exclusion (contracts/rule-scope.md §3).
+        completion = "nothing-to-review"
+        degradations = []
         provider = provider_for(run.agent.base_url)
 
     def report(output_ms: int) -> ReviewReport:
@@ -322,7 +377,11 @@ def build_pipeline_graph() -> CompiledStateGraph:
 
     graph.set_entry_point("preflight")
     graph.add_conditional_edges("preflight", _route_after_preflight, {"continue": "resolve_change_set", "end": END})
-    graph.add_edge("resolve_change_set", "parse_and_context")
+    graph.add_conditional_edges(
+        "resolve_change_set",
+        _route_after_change_set,
+        {"continue": "parse_and_context", "nothing_to_review": "build_report"},
+    )
     graph.add_edge("parse_and_context", "execute_checks")
     graph.add_edge("execute_checks", "load_patterns")
     graph.add_edge("load_patterns", "assemble_context")
