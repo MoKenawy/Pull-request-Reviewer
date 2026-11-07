@@ -8,6 +8,7 @@
 | [`technical_stack.md`](./technical_stack.md) | **What the system is built with** — libraries, protocols, repository layout, and the checks that enforce the seams. Subordinate to the specification: it never relaxes a requirement. |
 | [`adr/`](./adr/) | Architecture decision records. Why the system is shaped the way it is. Start with [ADR-0006](./adr/0006-local-cli-core-action-as-adapter.md), then [ADR-0007](./adr/0007-python-harness-typescript-target.md), then the [index](./adr/README.md). |
 | [`operation_guidelines.md`](./operation_guidelines.md) | **How to install, configure, run and troubleshoot the tool, and how to work on it.** Describes what the code does today, not the specification. Non-normative. |
+| [`rule-authoring.md`](./rule-authoring.md) | **How the rule library works, and how to write rules of your own** — the document format, path matching, inclusion and exclusion, how scope decides what gets reviewed, attribution, and every failure message. Describes what the code does today. Non-normative. |
 | [`system-design.md`](./system-design.md), [`system-design-block.md`](./system-design-block.md) | The level 1–3 system diagrams the HLRs are read from, as flowcharts and as block diagrams. Diagrams only. |
 | [`design/`](./design/) | **How the system is put together** — components, types, behaviour, contracts. Subordinate to both documents above: it introduces no requirement and no library. Start with [the design plan](./design/README.md). |
 

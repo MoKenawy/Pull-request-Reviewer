@@ -26,6 +26,7 @@ const GITHUB = 'https://github.com/MoKenawy/Pull-request-Reviewer';
 const PAGES = [
   {id: 'intro', source: 'README.md', title: 'Overview', slug: '/'},
   {id: 'guides/operation-guide', source: 'Docs/operation_guidelines.md', label: 'Operation guide'},
+  {id: 'guides/rule-authoring', source: 'Docs/rule-authoring.md', label: 'Writing review rules'},
   {
     id: 'architecture/components',
     source: 'Docs/design/Component-design/README.md',
