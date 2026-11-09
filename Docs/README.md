@@ -11,6 +11,7 @@
 | [`rule-authoring.md`](./rule-authoring.md) | **How the rule library works, and how to write rules of your own** — the document format, path matching, inclusion and exclusion, how scope decides what gets reviewed, attribution, and every failure message. Describes what the code does today. Non-normative. |
 | [`system-design.md`](./system-design.md), [`system-design-block.md`](./system-design-block.md) | The level 1–3 system diagrams the HLRs are read from, as flowcharts and as block diagrams. Diagrams only. |
 | [`design/`](./design/) | **How the system is put together** — components, types, behaviour, contracts. Subordinate to both documents above: it introduces no requirement and no library. Start with [the design plan](./design/README.md). |
+| [`assets/screenshots/`](./assets/screenshots/) | The screenshots the root [`README.md`](../README.md) shows — one demo run of the tool over a repository with defects planted on purpose. The documentation site serves copies of them; `documentation/scripts/sync-docs.mjs` makes the copies. |
 
 Places where the analysis hand-off contradicts itself, or stops short of a decision design cannot make alone, are collected in [`DESIGN_BLOCKERS.md`](../DESIGN_BLOCKERS.md) at the repository root, with a response log for the analysis team.
 
