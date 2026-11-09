@@ -35,3 +35,4 @@ documentation/.cache-loader/
 documentation/.env*
 documentation/docs/
 documentation/static/img/diagrams/
+documentation/static/img/screenshots/
