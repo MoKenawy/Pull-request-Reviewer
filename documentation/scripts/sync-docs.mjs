@@ -17,6 +17,10 @@ const REPO_ROOT = path.resolve(SITE_DIR, '..');
 const DOCS_DIR = path.join(SITE_DIR, 'docs');
 const CONTENT_DIR = path.join(SITE_DIR, 'content');
 const DIAGRAMS_DIR = path.join(SITE_DIR, 'static', 'img', 'diagrams');
+const SCREENSHOTS_DIR = path.join(SITE_DIR, 'static', 'img', 'screenshots');
+// Screenshots a source links to by relative path. Copied as they are and served
+// from the site, because a blob URL would show GitHub's file page, not the image.
+const SCREENSHOTS_SOURCE = 'Docs/assets/screenshots';
 const GITHUB = 'https://github.com/MoKenawy/Pull-request-Reviewer';
 
 // One entry per generated page. `id` is the path under docs/ without `.md`;
@@ -172,6 +176,7 @@ function rewriteLinks(page, pagesBySource, diagramAnchors) {
     const repoPath = path.posix.normalize(path.posix.join(sourceDir, decodeURI(file)));
     const linked = pagesBySource.get(repoPath);
     if (linked && (anchor === '' || linked.anchors.has(anchor.slice(1)))) return docLink(linked.id, anchor);
+    if (path.posix.dirname(repoPath) === SCREENSHOTS_SOURCE) return `/img/screenshots/${path.posix.basename(repoPath)}`;
     const diagram = DIAGRAMS.find((d) => d.source === repoPath);
     if (diagram && isImage) return `/img/diagrams/level-${diagram.level}.svg`;
     if (diagram) return docLink(DIAGRAMS_PAGE, `#${diagramAnchors.get(diagram.level)}`);
@@ -258,6 +263,16 @@ function copyDiagrams() {
   }
 }
 
+function copyScreenshots() {
+  const dir = path.join(REPO_ROOT, SCREENSHOTS_SOURCE);
+  if (!fs.existsSync(dir)) return;
+  fs.mkdirSync(SCREENSHOTS_DIR, {recursive: true});
+  for (const name of fs.readdirSync(dir)) {
+    fs.copyFileSync(path.join(dir, name), path.join(SCREENSHOTS_DIR, name));
+    console.log(`  static/img/screenshots/${name}  <-  ${SCREENSHOTS_SOURCE}/${name}`);
+  }
+}
+
 // The heading id of each level's section on the levels page.
 function diagramHeadings(pages) {
   const levels = pages.find((p) => p.id === DIAGRAMS_PAGE);
@@ -273,9 +288,11 @@ function diagramHeadings(pages) {
 
 fs.rmSync(DOCS_DIR, {recursive: true, force: true});
 fs.rmSync(DIAGRAMS_DIR, {recursive: true, force: true});
+fs.rmSync(SCREENSHOTS_DIR, {recursive: true, force: true});
 console.log('Syncing developer docs:');
 
 copyDiagrams();
+copyScreenshots();
 const pages = [...PAGES.map(extract), ...contentPages()];
 const pagesBySource = new Map(pages.map((p) => [p.source, p]));
 const diagramAnchors = diagramHeadings(pages);

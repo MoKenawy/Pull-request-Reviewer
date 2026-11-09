@@ -2,6 +2,10 @@
 
 A local command-line reviewer for TypeScript and JavaScript changes. It resolves a change set, passes it to a single model pass, and reports schema-validated findings in the terminal, as JSON and as a self-contained HTML page. A finding can enter the system only through a validated `emit_finding` tool call, and every degraded run says what it could not do.
 
+![The terminal output of a review: six findings, each with a file and line, a severity, a category, the reason, and the diff hunk it came from, followed by the counts, the verdict and exit code 1.](./Docs/assets/screenshots/terminal-findings.webp)
+
+*One run over a change with six deliberately planted defects. Every finding names a file and line, a severity, a category and the diff hunk it rests on; the run ends `blocking`, so the exit code is 1.*
+
 **Status:** the walking skeleton (feature 001) is built: the `review` and `render` commands, the working-tree, branch-range and public pull-request scopes, and the terminal, JSON and HTML outputs. Running the reviewed project's tests and type check, gathering related context, the pattern library and the `regression` command are not built yet. [`Docs/operation_guidelines.md`](./Docs/operation_guidelines.md) §11 lists everything that is missing.
 
 ## Install
@@ -25,7 +29,29 @@ uv run --env-file .env agentic-review review --json report.json --html report.ht
 uv run agentic-review render report.json --html report.html                   # re-render a saved report
 ```
 
-Exit codes: `0` the review completed, `1` it found a `blocking` finding, `2` no review could be produced, `3` the run could not start. `uv run agentic-review review --help` lists every option. The full guide to configuration, results and troubleshooting is [`Docs/operation_guidelines.md`](./Docs/operation_guidelines.md).
+![The output of `agentic-review review --help`: the usage line and the eight options, each with its argument and a one-line description.](./Docs/assets/screenshots/cli-help.webp)
+
+Exit codes: `0` the review completed, `1` it found a `blocking` finding, `2` no review could be produced, `3` the run could not start. The full guide to configuration, results and troubleshooting is [`Docs/operation_guidelines.md`](./Docs/operation_guidelines.md).
+
+## The same review as a page
+
+`--html` writes one self-contained file — no assets, no network — rendered from the same JSON report, which stays authoritative. It carries the verdict, the scope that was resolved, every degradation, the findings in severity order, what was reviewed and what was only listed, and the run's own metadata: model, provider, token counts, tool calls, repair turns and per-stage durations.
+
+![The top of the HTML report: the title and run metadata, a blocking verdict, the finding counts, the resolved scope, an empty degradations section, and the list of findings linking to the detail below.](./Docs/assets/screenshots/html-report-detail.webp)
+
+*The head of the page. [The whole report in one image](./Docs/assets/screenshots/html-report-full.webp) — findings, change summary, excluded paths and run metadata.*
+
+## The change in those screenshots
+
+A small demo repository with defects planted on purpose, reviewed as uncommitted work:
+
+![`git status --short` and `git diff --stat` over the demo repository: seven changed paths, one of them deleted and two untracked, six files changed with six insertions and nine deletions.](./Docs/assets/screenshots/change-under-review.webp)
+
+The defects were written down before the tool ran, so the output could be checked against them rather than admired:
+
+![The ground-truth file: a table of six planted defects with their file, lines, category and expected severity, and a note of the expected scope — which files should be reviewed, listed, or excluded.](./Docs/assets/screenshots/planted-defects.webp)
+
+The run found all six, at the severities expected, and classified the rest of the change set as predicted: `src/retry.ts` reviewed although untracked, the two Markdown files and the deleted `src/legacy.ts` listed but not reviewed, `dist/bundle.js` excluded as build output. This is one run on one change set, not a measured catch rate — measuring that is what the unbuilt `regression` command is for.
 
 ## Configure the model and the endpoint
 
