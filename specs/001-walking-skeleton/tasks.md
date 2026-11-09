@@ -359,7 +359,7 @@ default branch, honours no configuration from it, and leaves no temporary direct
 - [X] T124 Extend `src/agentic_review/cli/app.py`: `--scope` (only built values are offered: `working-tree`, `range`; anything else exits 3), `--base`, `--head`, `--pr`, `--config`
 - [X] T125 Add section "5 · Review a branch range and a pull request" to `notebooks/run_review_quickstart.ipynb`: settings (`RANGE_BASE`, `RANGE_HEAD`, `PR_URL`, `PR_BASE`, all `None` so "Run All" skips them), a range run, a pull-request run that confirms no temporary clone is left, and a preflight failure on purpose. Saved without outputs
 - [X] T126 [P] Document the new flags in `Docs/operation_guidelines.md`, plainly including that `--pr` contacts github.com and that the pull request's diff is sent to the model provider
-- [ ] T127 **Maintainer, needs a real key and network:** run `uv run --env-file .env agentic-review review --pr <URL of a public TypeScript pull request>` from outside any repository; confirm the scope line names the pull request and its base, and that no `agentic-review-pr-*` directory is left in the temp folder. Then run the notebook's section 5
+- [X] T127 **Maintainer, needs a real key and network:** run `uv run --env-file .env agentic-review review --pr <URL of a public TypeScript pull request>` from outside any repository; confirm the scope line names the pull request and its base, and that no `agentic-review-pr-*` directory is left in the temp folder. Then run the notebook's section 5
 
 **Checkpoint**: `uv run python -m pytest` and the import contracts green. Commit: `feat(changeset): review a public pull request and a named branch range`.
 
@@ -554,7 +554,7 @@ reviewed source file appears as text in a rationale rather than executing.
 
 - [X] T146 `uv run lint-imports` and `uv run pytest` green; update the test count in `CLAUDE.md`
 - [X] T147 [P] `uv build`, then confirm `agentic_review/core/output/templates/report.html.j2` is in the wheel. **Confirmed 2026-10-18: hatchling ships it from `packages = ["src/agentic_review"]` with no `force-include`, and it is the wheel's only non-Python file**
-- [ ] T148 **Maintainer, needs a real key and network:** `scripts/make_review_demo.py`, then `review --json r.json --html r.html`, then `render r.json --html r2.html`; diff the two HTML files and open both in a browser
+- [X] T148 **Maintainer, needs a real key and network:** `scripts/make_review_demo.py`, then `review --json r.json --html r.html`, then `render r.json --html r2.html`; diff the two HTML files and open both in a browser
 - [X] T149 [P] `Docs/operation_guidelines.md`: how to produce and read an HTML report, that it is self-contained and safe to send on, and that the JSON remains authoritative
 
 ## Notes
