@@ -29,7 +29,7 @@ body{
 .band{flex:none}
 
 /* Band A - DEPI header */
-.hdr{height:92px;display:flex;align-items:center;gap:30px}
+.hdr{height:86px;display:flex;align-items:center;gap:30px}
 .mark{
   display:flex;flex-direction:column;justify-content:center;
   height:84px;padding:0 30px 0 0;border-right:1px solid var(--line);
@@ -52,7 +52,7 @@ body{
 .pill-id.accent{background:linear-gradient(118deg,var(--blue),var(--purple));border-color:transparent;color:#fff;letter-spacing:.06em}
 
 /* Band B - title strip */
-.title{height:186px;display:flex;align-items:center;gap:40px}
+.title{height:184px;display:flex;align-items:center;gap:40px}
 .title-l{flex:1;min-width:0}
 h1{font-size:70px;font-weight:720;letter-spacing:-.022em;line-height:1.02;color:var(--ink)}
 .tag{
@@ -81,8 +81,8 @@ h1{font-size:70px;font-weight:720;letter-spacing:-.022em;line-height:1.02;color:
 .ctitle svg{width:21px;height:21px;flex:none}
 
 /* Band C - roadmap */
-.road{height:318px}
-.track{position:relative;display:flex;gap:19px;height:280px}
+.road{height:322px}
+.track{position:relative;display:flex;gap:19px;height:284px}
 .track:before{
   content:"";position:absolute;left:30px;right:30px;top:49px;height:2px;border-radius:2px;
   background:linear-gradient(90deg,var(--blue) 0%,var(--purple) 48%,var(--cyan) 100%);opacity:.26;
@@ -147,7 +147,7 @@ h1{font-size:70px;font-weight:720;letter-spacing:-.022em;line-height:1.02;color:
 .ai{position:relative;margin-top:16px;padding-left:28px}
 .ai-loop{position:absolute;left:0;top:70px;width:26px;height:126px}
 .ai-step{
-  padding:7px 12px;border-radius:12px;border:1px solid var(--line);background:#F8FAFD;
+  padding:6px 12px;border-radius:12px;border:1px solid var(--line);background:#F8FAFD;
   font-size:14.5px;font-weight:600;color:var(--ink);line-height:1.22;
 }
 .ai-step .s{display:block;margin-top:3px;font-size:12px;font-weight:500;color:var(--ink-3)}
@@ -156,7 +156,7 @@ h1{font-size:70px;font-weight:720;letter-spacing:-.022em;line-height:1.02;color:
 .ai-step.out{background:linear-gradient(165deg,#E9F8F0,#DEF3E8);border-color:rgba(18,161,80,.3);color:#0B6B36}
 .ai-arw{display:flex;justify-content:center;padding:1px 0}
 .ai-arw svg{width:9px;height:15px;opacity:.4}
-.ai-notes{margin-top:13px;display:flex;flex-direction:column;gap:7px}
+.ai-notes{margin-top:9px;display:flex;flex-direction:column;gap:5px}
 .ai-notes div{position:relative;padding-left:14px;font-size:12.8px;font-weight:450;line-height:1.28;color:var(--ink-3)}
 .ai-notes div:before{content:"";position:absolute;left:0;top:7px;width:4px;height:4px;border-radius:50%;background:var(--cyan)}
 
@@ -172,23 +172,23 @@ h1{font-size:70px;font-weight:720;letter-spacing:-.022em;line-height:1.02;color:
 .bg.g{background:rgba(18,161,80,.09);border-color:rgba(18,161,80,.24);color:#0B6B36}
 
 /* Band E - timeline + outcomes */
-.foot{height:244px;display:flex;gap:20px}
+.foot{height:250px;display:flex;gap:20px}
 .foot>.card{padding:19px 22px}
 .tl{flex:1.28;min-width:0} .oc{flex:1;min-width:0}
-.rel{position:relative;margin-top:13px;display:flex;gap:16px}
+.rel{position:relative;margin-top:9px;display:flex;gap:16px}
 .rel:before{content:"";position:absolute;left:14px;right:14px;top:7px;height:2px;background:linear-gradient(90deg,var(--green),var(--blue-3),var(--purple));opacity:.3}
-.rl{flex:1;min-width:0;position:relative;padding-top:22px}
+.rl{flex:1;min-width:0;position:relative;padding-top:17px}
 .rl:before{content:"";position:absolute;left:0;top:1px;width:14px;height:14px;border-radius:50%;background:#fff;border:3px solid var(--green)}
 .rl:nth-child(2):before{border-color:var(--blue-3)} .rl:nth-child(3):before{border-color:var(--purple)}
 .rl .r{font-size:11.5px;font-weight:700;letter-spacing:.13em;color:var(--ink-4)}
 .rl .h{margin-top:2px;font-size:17px;font-weight:660;letter-spacing:-.008em;color:var(--ink)}
 .rl .d{margin-top:4px;font-size:13.2px;font-weight:450;line-height:1.3;color:var(--ink-3)}
-.steps{margin-top:13px;padding-top:13px;border-top:1px dashed var(--line);display:flex;align-items:center;gap:7px}
+.steps{margin-top:9px;padding-top:9px;border-top:1px dashed var(--line);display:flex;align-items:center;gap:7px}
 .steps .lb{flex:none;font-size:11.5px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:var(--ink-4);margin-right:4px}
-.sp{padding:5px 11px;border-radius:999px;background:#F3F6FB;border:1px solid var(--line-2);font-size:13.2px;font-weight:570;color:var(--ink-2);white-space:nowrap}
+.sp{padding:4px 11px;border-radius:999px;background:#F3F6FB;border:1px solid var(--line-2);font-size:13.2px;font-weight:570;color:var(--ink-2);white-space:nowrap}
 .steps .sq{flex:none;width:13px;height:7px;opacity:.36}
 .pilot{
-  margin-top:14px;display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:12px;
+  margin-top:9px;display:flex;align-items:center;gap:10px;padding:8px 14px;border-radius:12px;
   background:linear-gradient(100deg,rgba(18,161,80,.07),rgba(0,180,216,.06));
   border:1px solid rgba(18,161,80,.2);
 }
@@ -200,7 +200,7 @@ h1{font-size:70px;font-weight:720;letter-spacing:-.022em;line-height:1.02;color:
 .ot .x{font-size:13.2px;font-weight:570;line-height:1.24;color:var(--ink-2)}
 .ot .x b{font-weight:680;color:var(--ink)}
 
-.sig{height:24px;display:flex;align-items:center;gap:14px;padding:0 4px}
+.sig{height:22px;display:flex;align-items:center;gap:14px;padding:0 4px}
 .sig .ln{flex:1;height:1px;background:var(--line)}
 .sig .tx{font-size:13px;font-weight:540;letter-spacing:.04em;color:var(--ink-4);white-space:nowrap}
 </style>
@@ -295,7 +295,7 @@ h1{font-size:70px;font-weight:720;letter-spacing:-.022em;line-height:1.02;color:
         <li>Five change scopes, including a public PR by URL</li>
         <li>The project&rsquo;s own tests and type-check as evidence</li>
         <li>Related source context at depth 0&ndash;1</li>
-        <li>Terminal, JSON, HTML and Mermaid output</li>
+        <li>Terminal, JSON, HTML and Mermaid</li>
       </ul>
     </div>
 
@@ -430,10 +430,10 @@ h1{font-size:70px;font-weight:720;letter-spacing:-.022em;line-height:1.02;color:
         <span class="bg b">Python 3.12 / 3.13</span><span class="bg b">uv</span><span class="bg b">PyPI</span><span class="bg b">pipx</span><span class="bg b">git</span>
       </div></div>
       <div class="sg"><div class="lb">Agent</div><div class="bs">
-        <span class="bg p">LangGraph</span><span class="bg p">LangChain</span><span class="bg p">langchain-openai</span>
+        <span class="bg p">LangGraph</span><span class="bg p">LangChain</span><span class="bg p">Langfuse</span>
       </div></div>
       <div class="sg"><div class="lb">Provider</div><div class="bs">
-        <span class="bg o">OpenAI-compatible HTTPS</span><span class="bg o">Gemini</span><span class="bg o">NVIDIA NIM</span>
+        <span class="bg o">OpenAI-compatible HTTPS</span>
       </div></div>
       <div class="sg"><div class="lb">Parsing</div><div class="bs">
         <span class="bg c">tree-sitter</span><span class="bg c">tree-sitter-typescript</span><span class="bg c">TypeScript</span><span class="bg c">Node sidecar</span><span class="bg c">esbuild</span><span class="bg c">JSON Lines over stdio</span>
@@ -494,7 +494,6 @@ h1{font-size:70px;font-weight:720;letter-spacing:-.022em;line-height:1.02;color:
       <div class="ot"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.4l3 3 7-7.4"/></svg><div class="x">Terminal summary</div></div>
       <div class="ot"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.4l3 3 7-7.4"/></svg><div class="x">JSON report, schema 1.0</div></div>
       <div class="ot"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.4l3 3 7-7.4"/></svg><div class="x">Self-contained HTML page</div></div>
-      <div class="ot"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.4l3 3 7-7.4"/></svg><div class="x">Mermaid visual report</div></div>
       <div class="ot"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.4l3 3 7-7.4"/></svg><div class="x">Pattern rule library</div></div>
       <div class="ot"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.4l3 3 7-7.4"/></svg><div class="x">PyPI package</div></div>
       <div class="ot"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.4l3 3 7-7.4"/></svg><div class="x"><b>427</b> offline tests</div></div>
