@@ -15,6 +15,15 @@
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{width:2560px;height:1440px;overflow:hidden}
+
+/* One 16:9 page, exactly the pixel canvas at 96dpi (2560/96 x 1440/96 in).
+   That is 2x a 13.333 x 7.5in widescreen slide, so it drops in at any scale. */
+@page{size:26.6667in 15in;margin:0}
+@media print{
+  html,body{width:2560px;height:1440px;overflow:hidden}
+  body{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .band{break-inside:avoid;page-break-inside:avoid}
+}
 body{
   background:
     radial-gradient(1200px 520px at 8% -8%, rgba(0,180,216,.10), transparent 62%),

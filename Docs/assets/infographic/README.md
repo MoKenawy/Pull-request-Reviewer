@@ -7,6 +7,7 @@ One presentation slide summarising the whole project, built to the DEPI infograp
 |---|---|
 | [`agentic-code-review-depi-slide.html`](./agentic-code-review-depi-slide.html) | The source. One file — no scripts, no network references, system fonts, hand-written inline SVG icons. The same self-containment rule the tool's own HTML report follows. |
 | `agentic-code-review-depi-slide.png` | The 2560 × 1440 render. Drop it straight into a widescreen PowerPoint, Google Slides or Keynote slide; it fills the frame with no letterboxing. |
+| `agentic-code-review-depi-slide.pdf` | The same slide as one 16:9 page, 26.667 × 15in — exactly twice a 13.333 × 7.5in widescreen slide, so it places at any scale. Text stays vector, so it prints sharp. |
 
 ## Re-rendering after an edit
 
@@ -32,6 +33,16 @@ Three traps, all of which cost an afternoon once:
 
 `--force-device-scale-factor=1` is what makes the output exactly 2560 × 1440; without it the
 host display's device pixel ratio leaks into the image size.
+
+For the PDF, same shape, swapping the screenshot flag for the print one:
+
+```powershell
+Start-Process -FilePath "C:\Program Files\Google\Chrome\Application\chrome.exe" -NoNewWindow -Wait -ArgumentList @("--headless","--disable-gpu","--no-pdf-header-footer","--print-to-pdf=$($PWD.Path)\Docs\assets\infographic\agentic-code-review-depi-slide.pdf","file:///$($PWD.Path -replace '\\','/')/Docs/assets/infographic/agentic-code-review-depi-slide.html")
+```
+
+The page size comes from the `@page` rule in the HTML, and `print-color-adjust: exact` in the
+print block is what keeps the gradients and card tints from being dropped. Re-render both
+whenever the HTML changes, or the PNG and the PDF will disagree.
 
 `--force-device-scale-factor=1` is what makes the output exactly 2560 × 1440; without it the
 device pixel ratio of the host display leaks into the image size.
