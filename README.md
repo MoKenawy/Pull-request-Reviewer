@@ -18,7 +18,7 @@ uv sync
 
 ## Run
 
-The tool needs a key for whichever OpenAI-compatible endpoint it is pointed at — by default Google's Gemini endpoint — in `AGENTIC_REVIEW_API_KEY` or in the user-level credentials file. Never put the key in the repository.
+The tool needs a key for whichever OpenAI-compatible endpoint it is pointed at — the built-in default is the NVIDIA NIM endpoint, and [Configure the model and the endpoint](#configure-the-model-and-the-endpoint) shows how to point it elsewhere — in `AGENTIC_REVIEW_API_KEY` or in the user-level credentials file. Never put the key in the repository.
 
 ```
 cp .env.example .env          # then set AGENTIC_REVIEW_API_KEY

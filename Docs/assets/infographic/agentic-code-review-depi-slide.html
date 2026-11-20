@@ -1,0 +1,522 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Agentic Code Review — DEPI Roadmap Slide</title>
+<style>
+:root{
+  --blue:#0B2E6F; --blue-2:#133E8C; --blue-3:#1C6FC4;
+  --purple:#5B3BA8; --cyan:#00B4D8; --orange:#FF7A1A; --green:#12A150;
+  --page:#F4F6FB; --card:#FFFFFF;
+  --ink:#0F1726; --ink-2:#3A465B; --ink-3:#6E7B8D; --ink-4:#95A0B0;
+  --line:rgba(11,46,111,.13); --line-2:rgba(11,46,111,.07);
+  --sh:0 1px 2px rgba(15,23,38,.05), 0 10px 28px rgba(11,46,111,.065);
+  --sh-s:0 1px 2px rgba(15,23,38,.05), 0 4px 12px rgba(11,46,111,.05);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:2560px;height:1440px;overflow:hidden}
+
+/* One 16:9 page, exactly the pixel canvas at 96dpi (2560/96 x 1440/96 in).
+   That is 2x a 13.333 x 7.5in widescreen slide, so it drops in at any scale. */
+@page{size:26.6667in 15in;margin:0}
+@media print{
+  html,body{width:2560px;height:1440px;overflow:hidden}
+  body{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .band{break-inside:avoid;page-break-inside:avoid}
+}
+body{
+  background:
+    radial-gradient(1200px 520px at 8% -8%, rgba(0,180,216,.10), transparent 62%),
+    radial-gradient(1100px 520px at 97% 4%, rgba(91,59,168,.10), transparent 60%),
+    var(--page);
+  font-family:"Segoe UI Variable Display","Segoe UI",Inter,system-ui,-apple-system,Arial,sans-serif;
+  color:var(--ink);
+  -webkit-font-smoothing:antialiased;
+  display:flex;flex-direction:column;gap:16px;
+  padding:36px 56px 24px;
+}
+.band{flex:none}
+
+/* Band A - DEPI header */
+.hdr{height:86px;display:flex;align-items:center;gap:30px}
+.mark{
+  display:flex;flex-direction:column;justify-content:center;
+  height:84px;padding:0 30px 0 0;border-right:1px solid var(--line);
+}
+.mark .wm{
+  font-size:46px;font-weight:800;letter-spacing:.20em;line-height:1;
+  background:linear-gradient(118deg,var(--blue) 0%,var(--purple) 58%,var(--cyan) 100%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+.mark .wm-sub{margin-top:9px;font-size:14.5px;font-weight:600;letter-spacing:.135em;text-transform:uppercase;color:var(--ink-3)}
+.trk{display:flex;flex-direction:column;gap:7px}
+.trk .k{font-size:12.5px;font-weight:700;letter-spacing:.17em;text-transform:uppercase;color:var(--ink-4)}
+.trk .v{font-size:27px;font-weight:650;letter-spacing:-.005em;color:var(--blue)}
+.hdr-sp{flex:1}
+.hdr-id{display:flex;align-items:center;gap:16px}
+.pill-id{
+  padding:9px 18px;border-radius:999px;background:#fff;border:1px solid var(--line);
+  font-size:14.5px;font-weight:650;letter-spacing:.1em;color:var(--ink-2);box-shadow:var(--sh-s);
+}
+.pill-id.accent{background:linear-gradient(118deg,var(--blue),var(--purple));border-color:transparent;color:#fff;letter-spacing:.06em}
+
+/* Band B - title strip */
+.title{height:184px;display:flex;align-items:center;gap:40px}
+.title-l{flex:1;min-width:0}
+h1{font-size:70px;font-weight:720;letter-spacing:-.022em;line-height:1.02;color:var(--ink)}
+.tag{
+  margin-top:13px;display:inline-flex;align-items:center;gap:11px;
+  font-size:26px;font-weight:600;letter-spacing:-.004em;color:var(--purple);
+}
+.tag .dot{width:8px;height:8px;border-radius:50%;background:linear-gradient(135deg,var(--purple),var(--cyan))}
+.lede{margin-top:11px;font-size:18.5px;font-weight:450;line-height:1.42;color:var(--ink-2);max-width:1470px}
+.kpis{display:flex;gap:16px}
+.kpi{
+  width:218px;padding:19px 20px 17px;border-radius:18px;
+  background:linear-gradient(160deg,rgba(255,255,255,.96),rgba(255,255,255,.72));
+  border:1px solid var(--line);box-shadow:var(--sh);backdrop-filter:blur(6px);
+}
+.kpi .n{font-size:36px;font-weight:730;letter-spacing:-.02em;line-height:1;color:var(--blue)}
+.kpi .n em{font-style:normal;font-size:21px;font-weight:650}
+.kpi.o .n{color:var(--orange)} .kpi.c .n{color:var(--blue-3)}
+.kpi .t{margin-top:9px;font-size:14.5px;font-weight:500;line-height:1.3;color:var(--ink-3)}
+
+/* shared */
+.blabel{display:flex;align-items:center;gap:11px;margin-bottom:12px}
+.blabel .bar{width:26px;height:3px;border-radius:2px;background:linear-gradient(90deg,var(--blue),var(--cyan))}
+.blabel .tx{font-size:13px;font-weight:700;letter-spacing:.17em;text-transform:uppercase;color:var(--ink-4)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:20px;box-shadow:var(--sh)}
+.ctitle{display:flex;align-items:center;gap:11px;font-size:21px;font-weight:680;letter-spacing:-.008em;color:var(--ink)}
+.ctitle svg{width:21px;height:21px;flex:none}
+
+/* Band C - roadmap */
+.road{height:322px}
+.track{position:relative;display:flex;gap:19px;height:284px}
+.track:before{
+  content:"";position:absolute;left:30px;right:30px;top:49px;height:2px;border-radius:2px;
+  background:linear-gradient(90deg,var(--blue) 0%,var(--purple) 48%,var(--cyan) 100%);opacity:.26;
+}
+.st{
+  position:relative;flex:1;min-width:0;padding:20px 20px 18px;
+  background:var(--card);border:1px solid var(--line);border-radius:20px;box-shadow:var(--sh);
+}
+.st:after{
+  content:"";position:absolute;right:-13px;top:50px;width:9px;height:9px;
+  border-top:2px solid rgba(11,46,111,.3);border-right:2px solid rgba(11,46,111,.3);
+  transform:rotate(45deg);
+}
+.st:last-child:after{display:none}
+.st-top{display:flex;align-items:center;justify-content:space-between;height:38px}
+.num{
+  width:38px;height:38px;border-radius:12px;display:flex;align-items:center;justify-content:center;
+  font-size:16px;font-weight:720;color:#fff;letter-spacing:-.01em;
+  box-shadow:0 5px 14px rgba(11,46,111,.22);
+}
+.st-ic{width:26px;height:26px;opacity:.95}
+.st h3{margin-top:14px;font-size:23px;font-weight:690;letter-spacing:-.012em;color:var(--ink)}
+.st ul{margin-top:12px;list-style:none;display:flex;flex-direction:column;gap:8px}
+.st li{position:relative;padding-left:15px;font-size:16.2px;font-weight:450;line-height:1.28;color:var(--ink-2)}
+.st li:before{content:"";position:absolute;left:0;top:8px;width:5px;height:5px;border-radius:50%;background:currentColor;opacity:.42}
+
+/* Band D - mechanism */
+.mech{height:436px;display:flex;gap:20px}
+.mech>.card{padding:21px 23px}
+.m-pipe{flex:1.46;min-width:0}
+.m-ai{flex:.80;min-width:0}
+.m-stack{flex:1.16;min-width:0}
+
+.flow{margin-top:22px;display:flex;flex-direction:column;gap:16px}
+.frow{display:flex;align-items:center;gap:8px}
+.node{
+  flex:1;min-width:0;padding:12px 11px;border-radius:13px;text-align:center;
+  background:linear-gradient(170deg,#FBFCFE,#F1F4F9);border:1px solid var(--line);
+}
+.node .nm{font-size:15px;font-weight:620;letter-spacing:-.008em;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.node .cf{margin-top:3px;font-size:11.5px;font-weight:700;letter-spacing:.09em;color:var(--ink-4)}
+.node.model{
+  background:linear-gradient(165deg,#FFF4EA,#FFE9D6);border-color:rgba(255,122,26,.42);
+  box-shadow:0 6px 18px rgba(255,122,26,.17);
+}
+.node.model .nm{color:#9A4408} .node.model .cf{color:#C2691B}
+.arw{flex:none;width:17px;height:9px;opacity:.42}
+.wrapmark{flex:none;width:19px;height:19px;opacity:.35;margin-right:1px}
+.loopnote{
+  margin-top:8px;display:inline-flex;align-items:center;gap:8px;padding:6px 13px;border-radius:999px;
+  background:rgba(255,122,26,.09);border:1px solid rgba(255,122,26,.26);
+  font-size:13.5px;font-weight:600;color:#9A4408;
+}
+.loopnote svg{width:14px;height:14px}
+.seam{margin-top:22px;padding-top:18px;border-top:1px dashed var(--line)}
+.seam-h{font-size:12.5px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--ink-4);margin-bottom:11px}
+.seam-row{display:flex;gap:9px}
+.sc{flex:1;min-width:0;padding:11px 12px;border-radius:12px;border:1px solid var(--line-2);background:#F8FAFD}
+.sc .p{font-family:"Cascadia Mono","Consolas",monospace;font-size:14px;font-weight:600;color:var(--blue)}
+.sc .d{margin-top:4px;font-size:12.5px;font-weight:450;line-height:1.26;color:var(--ink-3)}
+
+.ai{position:relative;margin-top:16px;padding-left:28px}
+.ai-loop{position:absolute;left:0;top:70px;width:26px;height:126px}
+.ai-step{
+  padding:6px 12px;border-radius:12px;border:1px solid var(--line);background:#F8FAFD;
+  font-size:14.5px;font-weight:600;color:var(--ink);line-height:1.22;
+}
+.ai-step .s{display:block;margin-top:3px;font-size:12px;font-weight:500;color:var(--ink-3)}
+.ai-step.model{background:linear-gradient(165deg,#FFF4EA,#FFE9D6);border-color:rgba(255,122,26,.4);color:#9A4408}
+.ai-step.gate{background:linear-gradient(165deg,#F2EDFC,#EAE2FA);border-color:rgba(91,59,168,.3);color:#452A85}
+.ai-step.out{background:linear-gradient(165deg,#E9F8F0,#DEF3E8);border-color:rgba(18,161,80,.3);color:#0B6B36}
+.ai-arw{display:flex;justify-content:center;padding:1px 0}
+.ai-arw svg{width:9px;height:15px;opacity:.4}
+.ai-notes{margin-top:9px;display:flex;flex-direction:column;gap:5px}
+.ai-notes div{position:relative;padding-left:14px;font-size:12.8px;font-weight:450;line-height:1.28;color:var(--ink-3)}
+.ai-notes div:before{content:"";position:absolute;left:0;top:7px;width:4px;height:4px;border-radius:50%;background:var(--cyan)}
+
+.sgroups{margin-top:15px;display:flex;flex-direction:column;gap:11px}
+.sg{display:flex;gap:12px;align-items:flex-start}
+.sg .lb{flex:none;width:76px;padding-top:6px;font-size:11.5px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:var(--ink-4);text-align:right}
+.sg .bs{flex:1;display:flex;flex-wrap:wrap;gap:6px}
+.bg{padding:5px 11px;border-radius:8px;font-size:14px;font-weight:570;letter-spacing:-.004em;border:1px solid var(--line);background:#F8FAFD;color:var(--ink-2);white-space:nowrap}
+.bg.b{background:rgba(19,62,140,.08);border-color:rgba(19,62,140,.2);color:var(--blue)}
+.bg.p{background:rgba(91,59,168,.09);border-color:rgba(91,59,168,.22);color:#4A2F8E}
+.bg.c{background:rgba(0,180,216,.1);border-color:rgba(0,180,216,.26);color:#06708A}
+.bg.o{background:rgba(255,122,26,.1);border-color:rgba(255,122,26,.26);color:#9A4408}
+.bg.g{background:rgba(18,161,80,.09);border-color:rgba(18,161,80,.24);color:#0B6B36}
+
+/* Band E - timeline + outcomes */
+.foot{height:250px;display:flex;gap:20px}
+.foot>.card{padding:19px 22px}
+.tl{flex:1.28;min-width:0} .oc{flex:1;min-width:0}
+.rel{position:relative;margin-top:9px;display:flex;gap:16px}
+.rel:before{content:"";position:absolute;left:14px;right:14px;top:7px;height:2px;background:linear-gradient(90deg,var(--green),var(--blue-3),var(--purple));opacity:.3}
+.rl{flex:1;min-width:0;position:relative;padding-top:17px}
+.rl:before{content:"";position:absolute;left:0;top:1px;width:14px;height:14px;border-radius:50%;background:#fff;border:3px solid var(--green)}
+.rl:nth-child(2):before{border-color:var(--blue-3)} .rl:nth-child(3):before{border-color:var(--purple)}
+.rl .r{font-size:11.5px;font-weight:700;letter-spacing:.13em;color:var(--ink-4)}
+.rl .h{margin-top:2px;font-size:17px;font-weight:660;letter-spacing:-.008em;color:var(--ink)}
+.rl .d{margin-top:4px;font-size:13.2px;font-weight:450;line-height:1.3;color:var(--ink-3)}
+.steps{margin-top:9px;padding-top:9px;border-top:1px dashed var(--line);display:flex;align-items:center;gap:7px}
+.steps .lb{flex:none;font-size:11.5px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:var(--ink-4);margin-right:4px}
+.sp{padding:4px 11px;border-radius:999px;background:#F3F6FB;border:1px solid var(--line-2);font-size:13.2px;font-weight:570;color:var(--ink-2);white-space:nowrap}
+.steps .sq{flex:none;width:13px;height:7px;opacity:.36}
+.pilot{
+  margin-top:9px;display:flex;align-items:center;gap:10px;padding:8px 14px;border-radius:12px;
+  background:linear-gradient(100deg,rgba(18,161,80,.07),rgba(0,180,216,.06));
+  border:1px solid rgba(18,161,80,.2);
+}
+.pilot .k{font-size:11.5px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:#0B6B36}
+.pilot .v{font-size:14.5px;font-weight:540;color:var(--ink-2)}
+.ocg{margin-top:15px;display:grid;grid-template-columns:repeat(5,1fr);gap:9px}
+.ot{padding:11px 11px 10px;border-radius:12px;border:1px solid var(--line-2);background:#F8FAFD;display:flex;flex-direction:column;gap:7px}
+.ot svg{width:15px;height:15px;color:var(--green)}
+.ot .x{font-size:13.2px;font-weight:570;line-height:1.24;color:var(--ink-2)}
+.ot .x b{font-weight:680;color:var(--ink)}
+
+.sig{height:22px;display:flex;align-items:center;gap:14px;padding:0 4px}
+.sig .ln{flex:1;height:1px;background:var(--line)}
+.sig .tx{font-size:13px;font-weight:540;letter-spacing:.04em;color:var(--ink-4);white-space:nowrap}
+</style>
+</head>
+<body>
+
+<!-- A - DEPI header -->
+<div class="band hdr">
+  <div class="mark">
+    <div class="wm">DEPI</div>
+    <div class="wm-sub">Digital Egypt Pioneers Initiative</div>
+  </div>
+  <div class="trk">
+    <div class="k">Track</div>
+    <div class="v">AI Software Professional</div>
+  </div>
+  <div class="hdr-sp"></div>
+  <div class="hdr-id">
+    <div class="pill-id">CAI5_IND5_G1</div>
+    <div class="pill-id accent">Graduation Project</div>
+  </div>
+</div>
+
+<!-- B - title -->
+<div class="band title">
+  <div class="title-l">
+    <h1>Agentic Code Review</h1>
+    <div class="tag"><span class="dot"></span>Review that shows its evidence.</div>
+    <div class="lede">A local command-line reviewer for TypeScript and JavaScript changes. It resolves the change set, runs the project&rsquo;s own tests and type-check, and passes that evidence to a single schema-validated model pass &mdash; findings in the terminal, as JSON and as a self-contained HTML page.</div>
+  </div>
+  <div class="kpis">
+    <div class="kpi o"><div class="n">&asymp;5&times;</div><div class="t">longer reviews where AI use is high &mdash; 22,000 developers studied</div></div>
+    <div class="kpi"><div class="n">9 <em>/ 1</em></div><div class="t">core functions in a fixed graph, one model pass</div></div>
+    <div class="kpi c"><div class="n">18</div><div class="t">acceptance criteria, each verified by execution</div></div>
+  </div>
+</div>
+
+<!-- C - roadmap -->
+<div class="band road">
+  <div class="blabel"><span class="bar"></span><span class="tx">Project roadmap</span></div>
+  <div class="track">
+
+    <div class="st">
+      <div class="st-top">
+        <div class="num" style="background:linear-gradient(135deg,#0B2E6F,#1B3C85)">01</div>
+        <svg class="st-ic" viewBox="0 0 24 24" fill="none" stroke="#FF7A1A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.6 21.2 20H2.8z"/><path d="M12 9.6v4.6"/><circle cx="12" cy="17" r=".9" fill="#FF7A1A" stroke="none"/></svg>
+      </div>
+      <h3>The problem</h3>
+      <ul>
+        <li>AI writes code faster than a team can read it</li>
+        <li>Clean code, passing tests, no signal</li>
+        <li>Reviews take about five times as long</li>
+        <li>Nearly a third more changes skip review</li>
+      </ul>
+    </div>
+
+    <div class="st">
+      <div class="st-top">
+        <div class="num" style="background:linear-gradient(135deg,#1E3787,#33379B)">02</div>
+        <svg class="st-ic" viewBox="0 0 24 24" fill="none" stroke="#12A150" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.8l7.4 3.1v6.3c0 4.7-3.2 7.9-7.4 9.3-4.2-1.4-7.4-4.6-7.4-9.3V5.9z"/><path d="M8.7 12.1l2.3 2.3 4.4-4.6"/></svg>
+      </div>
+      <h3>The solution</h3>
+      <ul>
+        <li>One local CLI, no server and no account</li>
+        <li>Every finding cites evidence or says unverified</li>
+        <li>A review under every failure mode</li>
+        <li>Nothing fails silently</li>
+      </ul>
+    </div>
+
+    <div class="st">
+      <div class="st-top">
+        <div class="num" style="background:linear-gradient(135deg,#33379B,#4A3AA8)">03</div>
+        <svg class="st-ic" viewBox="0 0 24 24" fill="none" stroke="#1C6FC4" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.1"/><path d="M3.3 19.2c0-3.1 2.6-5.1 5.7-5.1s5.7 2 5.7 5.1"/><circle cx="17.2" cy="8.6" r="2.4"/><path d="M16.2 14.3c2.7 0 4.5 1.9 4.5 4.6"/></svg>
+      </div>
+      <h3>Who it serves</h3>
+      <ul>
+        <li>The reviewer of a teammate&rsquo;s pull request</li>
+        <li>The author, before they push</li>
+        <li>The tech lead guarding the design</li>
+        <li>Maintainers measuring the engine</li>
+      </ul>
+    </div>
+
+    <div class="st">
+      <div class="st-top">
+        <div class="num" style="background:linear-gradient(135deg,#5B3BA8,#6B45B0)">04</div>
+        <svg class="st-ic" viewBox="0 0 24 24" fill="none" stroke="#5B3BA8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.4 7.2h17.2M3.4 12h17.2M3.4 16.8h17.2"/><circle cx="8.6" cy="7.2" r="2.1" fill="#fff"/><circle cx="15" cy="12" r="2.1" fill="#fff"/><circle cx="7" cy="16.8" r="2.1" fill="#fff"/></svg>
+      </div>
+      <h3>Core features</h3>
+      <ul>
+        <li>Five change scopes, including a public PR by URL</li>
+        <li>The project&rsquo;s own tests and type-check as evidence</li>
+        <li>Related source context at depth 0&ndash;1</li>
+        <li>Terminal, JSON and HTML output</li>
+      </ul>
+    </div>
+
+    <div class="st">
+      <div class="st-top">
+        <div class="num" style="background:linear-gradient(135deg,#5338A6,#2E6FC0)">05</div>
+        <svg class="st-ic" viewBox="0 0 24 24" fill="none" stroke="#2E6FC0" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="4.6" r="2.3"/><circle cx="4.8" cy="18.4" r="2.3"/><circle cx="19.2" cy="18.4" r="2.3"/><path d="M10.6 6.7 6.2 16.3M13.4 6.7l4.4 9.6M7.1 18.4h9.8"/></svg>
+      </div>
+      <h3>Architecture</h3>
+      <ul>
+        <li>A fixed, acyclic graph our code owns</li>
+        <li>Nine core functions, CF-1 to CF-9</li>
+        <li>One core behind thin adapters</li>
+        <li>Eight import contracts hold the seams</li>
+      </ul>
+    </div>
+
+    <div class="st">
+      <div class="st-top">
+        <div class="num" style="background:linear-gradient(135deg,#1C6FC4,#0D9BD0)">06</div>
+        <svg class="st-ic" viewBox="0 0 24 24" fill="none" stroke="#0D9BD0" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="7.4" y="7.4" width="9.2" height="9.2" rx="2.1"/><path d="M10.6 3.8v3.6M13.4 3.8v3.6M10.6 16.6v3.6M13.4 16.6v3.6M3.8 10.6h3.6M3.8 13.4h3.6M16.6 10.6h3.6M16.6 13.4h3.6"/></svg>
+      </div>
+      <h3>The AI layer</h3>
+      <ul>
+        <li>One isolated review pass, no shared history</li>
+        <li>Findings enter only through emit_finding</li>
+        <li>Schema-checked at the call boundary</li>
+        <li>One repair turn, then it stops</li>
+      </ul>
+    </div>
+
+    <div class="st">
+      <div class="st-top">
+        <div class="num" style="background:linear-gradient(135deg,#0D9BD0,#00B4D8)">07</div>
+        <svg class="st-ic" viewBox="0 0 24 24" fill="none" stroke="#12A150" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.6 20.2h16.8"/><path d="M6.6 20.2v-5.4M11 20.2V9.4M15.4 20.2v-8.2M19.8 20.2V5.2"/></svg>
+      </div>
+      <h3>Measurement</h3>
+      <ul>
+        <li>A curated corpus of known defects</li>
+        <li>A catch rate and a false-positive figure</li>
+        <li>A pattern rule library, yours or ours</li>
+        <li>Every later change judged, not argued</li>
+      </ul>
+    </div>
+
+  </div>
+</div>
+
+<!-- D - mechanism -->
+<div class="band mech">
+
+  <div class="card m-pipe">
+    <div class="ctitle">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#133E8C" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.4" cy="5.4" r="2.2"/><circle cx="5.4" cy="18.6" r="2.2"/><circle cx="18.6" cy="12" r="2.2"/><path d="M5.4 7.6v8.8M7.6 5.4h6.2a2.6 2.6 0 0 1 2.6 2.6v1.8M7.6 18.6h6.2a2.6 2.6 0 0 0 2.6-2.6v-1.8"/></svg>
+      System architecture &mdash; a fixed pipeline our code owns
+    </div>
+
+    <div class="flow">
+      <div class="frow">
+        <div class="node"><div class="nm">preflight</div><div class="cf">CF-9</div></div>
+        <svg class="arw" viewBox="0 0 17 9" fill="none" stroke="#0B2E6F" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M.8 4.5h14M11.6 1.2l3.3 3.3-3.3 3.3"/></svg>
+        <div class="node"><div class="nm">resolve change set</div><div class="cf">CF-1</div></div>
+        <svg class="arw" viewBox="0 0 17 9" fill="none" stroke="#0B2E6F" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M.8 4.5h14M11.6 1.2l3.3 3.3-3.3 3.3"/></svg>
+        <div class="node"><div class="nm">parse &amp; context</div><div class="cf">CF-2</div></div>
+        <svg class="arw" viewBox="0 0 17 9" fill="none" stroke="#0B2E6F" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M.8 4.5h14M11.6 1.2l3.3 3.3-3.3 3.3"/></svg>
+        <div class="node"><div class="nm">execute checks</div><div class="cf">CF-3</div></div>
+        <svg class="arw" viewBox="0 0 17 9" fill="none" stroke="#0B2E6F" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M.8 4.5h14M11.6 1.2l3.3 3.3-3.3 3.3"/></svg>
+        <div class="node"><div class="nm">load patterns</div><div class="cf">CF-8</div></div>
+      </div>
+      <div class="frow">
+        <svg class="wrapmark" viewBox="0 0 19 19" fill="none" stroke="#0B2E6F" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2.5v8.5a3.4 3.4 0 0 0 3.4 3.4H16"/><path d="M12.6 11l3.6 3.4-3.6 3.4"/></svg>
+        <div class="node"><div class="nm">assemble context</div><div class="cf">CF-4</div></div>
+        <svg class="arw" viewBox="0 0 17 9" fill="none" stroke="#0B2E6F" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M.8 4.5h14M11.6 1.2l3.3 3.3-3.3 3.3"/></svg>
+        <div class="node model"><div class="nm">review</div><div class="cf">CF-6 &middot; MODEL</div></div>
+        <svg class="arw" viewBox="0 0 17 9" fill="none" stroke="#0B2E6F" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M.8 4.5h14M11.6 1.2l3.3 3.3-3.3 3.3"/></svg>
+        <div class="node"><div class="nm">build report</div><div class="cf">CF-5</div></div>
+        <svg class="arw" viewBox="0 0 17 9" fill="none" stroke="#0B2E6F" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M.8 4.5h14M11.6 1.2l3.3 3.3-3.3 3.3"/></svg>
+        <div class="node"><div class="nm">render</div><div class="cf">CF-7</div></div>
+      </div>
+    </div>
+
+    <div class="loopnote">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#9A4408" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 11.5a8.5 8.5 0 1 1-2.6-6.1"/><path d="M20.7 3.4v4.9h-4.9"/></svg>
+      The review step is the only place a cycle may occur &mdash; one repair turn
+    </div>
+
+    <div class="seam">
+      <div class="seam-h">One core, thin adapters</div>
+      <div class="seam-row">
+        <div class="sc"><div class="p">cli/</div><div class="d">Adapter. Translates only &mdash; it never decides what counts as a finding.</div></div>
+        <div class="sc"><div class="p">agents/</div><div class="d">The only package that may import the agent framework.</div></div>
+        <div class="sc"><div class="p">core/</div><div class="d">Framework-free. Every module callable as an ordinary function.</div></div>
+        <div class="sc"><div class="p">_vendor/resolver.js</div><div class="d">The bundled Node sidecar &mdash; shipped, never fetched.</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card m-ai">
+    <div class="ctitle">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#FF7A1A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9.6 3.4a3.4 3.4 0 0 0-3.4 3.4 3 3 0 0 0-1.4 5.5 3.2 3.2 0 0 0 1.7 5.5 3.3 3.3 0 0 0 6.3-1.4V6.8a3.4 3.4 0 0 0-3.2-3.4z"/><path d="M12.8 8.4h3.4M12.8 15.2h3.4"/><circle cx="18.6" cy="8.4" r="1.6"/><circle cx="18.6" cy="15.2" r="1.6"/></svg>
+      AI components
+    </div>
+    <div class="ai">
+      <svg class="ai-loop" viewBox="0 0 26 150" fill="none" stroke="#5B3BA8" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M24 142H11a8 8 0 0 1-8-8V16a8 8 0 0 1 8-8h13" opacity=".55"/>
+        <path d="M20.4 4.6 24.4 8l-4 3.4" opacity=".55"/>
+      </svg>
+      <div class="ai-step">Assembled context &mdash; diff, related source, evidence, rules</div>
+      <div class="ai-arw"><svg viewBox="0 0 9 15" fill="none" stroke="#0B2E6F" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5.8v12.4M1.2 9.9l3.3 3.3 3.3-3.3"/></svg></div>
+      <div class="ai-step model">Model, isolated<span class="s">OpenAI-compatible, one pass</span></div>
+      <div class="ai-arw"><svg viewBox="0 0 9 15" fill="none" stroke="#0B2E6F" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5.8v12.4M1.2 9.9l3.3 3.3 3.3-3.3"/></svg></div>
+      <div class="ai-step">emit_finding &mdash; the only door a finding enters</div>
+      <div class="ai-arw"><svg viewBox="0 0 9 15" fill="none" stroke="#0B2E6F" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5.8v12.4M1.2 9.9l3.3 3.3 3.3-3.3"/></svg></div>
+      <div class="ai-step gate">Schema gate<span class="s">one Pydantic definition &middot; one repair turn</span></div>
+      <div class="ai-arw"><svg viewBox="0 0 9 15" fill="none" stroke="#0B2E6F" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5.8v12.4M1.2 9.9l3.3 3.3 3.3-3.3"/></svg></div>
+      <div class="ai-step out">Findings in canonical form<span class="s">7 categories &middot; 3 severities</span></div>
+    </div>
+    <div class="ai-notes">
+      <div>Structured output as the fallback path, and the report says which path was used</div>
+      <div>A configurable tool-call ceiling; read-only investigation tools off by default</div>
+      <div>No tool call is the model&rsquo;s termination signal &mdash; it is never obliged to make one</div>
+    </div>
+  </div>
+
+  <div class="card m-stack">
+    <div class="ctitle">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#5B3BA8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.8 21.4 7.4 12 12 2.6 7.4z"/><path d="M2.6 12.2 12 16.8l9.4-4.6M2.6 16.6 12 21.2l9.4-4.6"/></svg>
+      Technology stack
+    </div>
+    <div class="sgroups">
+      <div class="sg"><div class="lb">Host</div><div class="bs">
+        <span class="bg b">Python 3.12 / 3.13</span><span class="bg b">uv</span><span class="bg b">PyPI</span><span class="bg b">pipx</span><span class="bg b">git</span>
+      </div></div>
+      <div class="sg"><div class="lb">Agent</div><div class="bs">
+        <span class="bg p">LangGraph</span><span class="bg p">LangChain</span><span class="bg p">Langfuse</span>
+      </div></div>
+      <div class="sg"><div class="lb">Provider</div><div class="bs">
+        <span class="bg o">OpenAI-compatible HTTPS</span>
+      </div></div>
+      <div class="sg"><div class="lb">Parsing</div><div class="bs">
+        <span class="bg c">tree-sitter</span><span class="bg c">tree-sitter-typescript</span><span class="bg c">TypeScript</span><span class="bg c">Node sidecar</span><span class="bg c">esbuild</span><span class="bg c">JSON Lines over stdio</span>
+      </div></div>
+      <div class="sg"><div class="lb">Data</div><div class="bs">
+        <span class="bg">Pydantic v2</span><span class="bg">JSON Schema</span><span class="bg">PyYAML</span><span class="bg">No database</span>
+      </div></div>
+      <div class="sg"><div class="lb">Output</div><div class="bs">
+        <span class="bg">Typer</span><span class="bg">Rich</span><span class="bg">Jinja2</span>
+      </div></div>
+      <div class="sg"><div class="lb">Quality</div><div class="bs">
+        <span class="bg g">pytest</span><span class="bg g">import-linter</span><span class="bg g">jsonschema</span><span class="bg g">GitHub Actions</span>
+      </div></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- E - timeline + outcomes -->
+<div class="band foot">
+
+  <div class="card tl">
+    <div class="ctitle">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#1C6FC4" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.2"/><path d="M12 6.8V12l3.6 2.2"/></svg>
+      Development timeline
+    </div>
+    <div class="rel">
+      <div class="rl"><div class="r">RELEASE 1</div><div class="h">Local command line</div><div class="d">Review a change on your own machine</div></div>
+      <div class="rl"><div class="r">RELEASE 2</div><div class="h">Deeper context</div><div class="d">Callers, risk triage, memory of earlier reviews</div></div>
+      <div class="rl"><div class="r">RELEASE 3</div><div class="h">GitHub automation</div><div class="d">Runs on every PR and posts findings as comments</div></div>
+    </div>
+    <div class="steps">
+      <div class="lb">Build order</div>
+      <span class="sp">Walking skeleton</span>
+      <svg class="sq" viewBox="0 0 13 7" fill="none" stroke="#0B2E6F" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M.7 3.5h10.6M8.6 1l2.7 2.5L8.6 6"/></svg>
+      <span class="sp">Evidence</span>
+      <svg class="sq" viewBox="0 0 13 7" fill="none" stroke="#0B2E6F" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M.7 3.5h10.6M8.6 1l2.7 2.5L8.6 6"/></svg>
+      <span class="sp">Measurement</span>
+      <svg class="sq" viewBox="0 0 13 7" fill="none" stroke="#0B2E6F" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M.7 3.5h10.6M8.6 1l2.7 2.5L8.6 6"/></svg>
+      <span class="sp">Context quality</span>
+      <svg class="sq" viewBox="0 0 13 7" fill="none" stroke="#0B2E6F" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M.7 3.5h10.6M8.6 1l2.7 2.5L8.6 6"/></svg>
+      <span class="sp">Hardening</span>
+    </div>
+    <div class="pilot">
+      <span class="k">Pilot</span>
+      <span class="v">6 teams &middot; 8 weeks from January 2027 &middot; 1,000 pull requests reviewed &middot; 20% of findings acted on</span>
+    </div>
+  </div>
+
+  <div class="card oc">
+    <div class="ctitle">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#12A150" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.6 7.8 12 3.2 3.4 7.8v8.4L12 20.8l8.6-4.6z"/><path d="M8.9 11.8l2.3 2.3 4.4-4.5"/></svg>
+      Project outcomes
+    </div>
+    <div class="ocg">
+      <div class="ot"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.4l3 3 7-7.4"/></svg><div class="x"><b>review</b> command</div></div>
+      <div class="ot"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.4l3 3 7-7.4"/></svg><div class="x"><b>regression</b> command</div></div>
+      <div class="ot"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.4l3 3 7-7.4"/></svg><div class="x">Terminal summary</div></div>
+      <div class="ot"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.4l3 3 7-7.4"/></svg><div class="x">JSON report, schema 1.0</div></div>
+      <div class="ot"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.4l3 3 7-7.4"/></svg><div class="x">Self-contained HTML page</div></div>
+      <div class="ot"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.4l3 3 7-7.4"/></svg><div class="x">Pattern rule library</div></div>
+      <div class="ot"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.4l3 3 7-7.4"/></svg><div class="x">PyPI package</div></div>
+      <div class="ot"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.4l3 3 7-7.4"/></svg><div class="x"><b>427</b> offline tests</div></div>
+      <div class="ot"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.4l3 3 7-7.4"/></svg><div class="x">README &middot; licence &middot; CLI docs</div></div>
+    </div>
+  </div>
+
+</div>
+
+<div class="band sig">
+  <span class="tx">DEPI &middot; Digital Egypt Pioneers Initiative &mdash; AI Software Professional</span>
+  <span class="ln"></span>
+  <span class="tx">Agentic Code Review &middot; CAI5_IND5_G1 &middot; SRS v1.8, 6 November 2026</span>
+</div>
+
+</body>
+</html>

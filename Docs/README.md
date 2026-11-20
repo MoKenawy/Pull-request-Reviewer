@@ -12,6 +12,7 @@
 | [`system-design.md`](./system-design.md), [`system-design-block.md`](./system-design-block.md) | The level 1–3 system diagrams the HLRs are read from, as flowcharts and as block diagrams. Diagrams only. |
 | [`design/`](./design/) | **How the system is put together** — components, types, behaviour, contracts. Subordinate to both documents above: it introduces no requirement and no library. Start with [the design plan](./design/README.md). |
 | [`assets/screenshots/`](./assets/screenshots/) | The screenshots the root [`README.md`](../README.md) shows — one demo run of the tool over a repository with defects planted on purpose. The documentation site serves copies of them; `documentation/scripts/sync-docs.mjs` makes the copies. |
+| [`assets/infographic/`](./assets/infographic/) | The DEPI submission slide — the whole project on one 16:9 presentation slide, as self-contained HTML and a 2560 × 1440 PNG. Every claim on it comes from the documents above; its [README](./assets/infographic/README.md) lists the sources and how to re-render. |
 
 Places where the analysis hand-off contradicts itself, or stops short of a decision design cannot make alone, are collected in [`DESIGN_BLOCKERS.md`](../DESIGN_BLOCKERS.md) at the repository root, with a response log for the analysis team.
 
